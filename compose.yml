@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # SMS Web Management - Development
+  sms-web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    container_name: sms-web-manage-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      # Hot reload - Mount source code
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.app.json:/app/tsconfig.app.json
+      - ./tsconfig.node.json:/app/tsconfig.node.json
+      - ./components.json:/app/components.json
+      # Exclude node_modules for performance
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL_AUTH=${VITE_API_BASE_URL_AUTH:-http://localhost:3000}
+      - VITE_API_BASE_URL_DATA=${VITE_API_BASE_URL_DATA:-http://localhost:3000}
+      - VITE_APP_NAME=${VITE_APP_NAME:-SMS Data Management}
+      - VITE_APP_VERSION=${VITE_APP_VERSION:-1.0.0}
+      - VITE_APP_MODE=development
+    networks:
+      - sms-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  sms-network:
+    driver: bridge
+
+volumes:
+  node_modules_cache:
+    driver: local

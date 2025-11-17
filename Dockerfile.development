@@ -1,0 +1,36 @@
+# Dockerfile for Development Environment
+FROM oven/bun:1-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies for node-gyp and native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    nodejs \
+    npm
+
+# Copy package files
+COPY package.json bun.lockb* ./
+
+# Install dependencies
+RUN bun install
+
+# Copy source code
+COPY . .
+
+# Expose development port
+EXPOSE 5173
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S bunuser -u 1001 -G nodejs
+
+# Change ownership of app directory
+RUN chown -R bunuser:nodejs /app
+USER bunuser
+
+# Start development server with hot reload
+CMD ["bun", "run", "dev", "--host", "0.0.0.0"]

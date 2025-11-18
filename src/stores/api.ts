@@ -160,3 +160,5 @@ export async function logout(): Promise<void> {
   setTokens(null);
   router.push({ name: ROUTE_NAMES.LOGIN });
 }
+
+

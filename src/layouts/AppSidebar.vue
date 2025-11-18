@@ -36,6 +36,7 @@ import {
   LogOut,
   Database,
   ChevronRight,
+  HardDrive,
 } from "lucide-vue-next";
 
 import { getImgInitials } from "@/lib/helpers";
@@ -77,6 +78,13 @@ const menuConfig: {
       label: "จัดการฐานข้อมูล",
       icon: Database,
       routeName: ROUTE_NAMES.MANAGE_DATABASE,
+      children: null,
+    },
+    {
+      id: "dataset",
+      label: "Dataset",
+      icon: HardDrive,
+      routeName: ROUTE_NAMES.DATASET,
       children: null,
     },
     // ตัวอย่างการใช้ children - uncomment เมื่อต้องการใช้

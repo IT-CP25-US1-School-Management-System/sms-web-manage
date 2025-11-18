@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { ROUTE_NAMES } from "@/lib/constants";
 
@@ -91,6 +91,22 @@ const currentBreadcrumbs = computed(() => {
 const handleLogout = async () => {
   await authStore.logout();
 };
+
+// Scroll detection for header styling
+const isScrolled = ref(false);
+
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 0;
+};
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll);
+  handleScroll(); // Check initial scroll position
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+});
 </script>
 
 <template>
@@ -98,7 +114,15 @@ const handleLogout = async () => {
     <AppSidebar />
     <SidebarInset>
       <!-- Header -->
-      <header class="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+            <!-- Header -->
+      <header 
+        :class="[
+          'sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-all duration-300',
+          isScrolled 
+            ? 'mx-0 mt-0 rounded-none shadow-md' 
+            : 'rounded-t-lg shadow-sm'
+        ]"
+      >
         <SidebarTrigger class="-ml-1" />
         <div class="flex flex-1 items-center justify-between">
           <div class="flex items-center gap-2">

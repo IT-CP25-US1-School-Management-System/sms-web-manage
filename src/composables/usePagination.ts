@@ -13,6 +13,14 @@ export function usePagination(
 ) {
   const pagination = toRef(paginationRef);
 
+  const canPreviousPage = computed(() => {
+    return pagination.value.page > 1;
+  });
+
+  const canNextPage = computed(() => {
+    return pagination.value.page < pagination.value.total_pages;
+  });
+
   const getVisiblePages = computed(() => {
     const totalPages = pagination.value.total_pages;
     const currentPage = pagination.value.page;
@@ -20,25 +28,35 @@ export function usePagination(
 
     if (totalPages <= 0) return [];
 
+    // Always show first page
+    pages.push(1);
+
     if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) {
+      // Show all pages if total is 7 or less
+      for (let i = 2; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
+      // Complex pagination logic
       if (currentPage <= 4) {
-        for (let i = 1; i <= 5; i++) {
+        // Show 1, 2, 3, 4, 5, ..., last
+        for (let i = 2; i <= 5; i++) {
           pages.push(i);
         }
-        pages.push("...");
-        pages.push(totalPages);
+        if (totalPages > 6) {
+          pages.push("...");
+          pages.push(totalPages);
+        }
       } else if (currentPage >= totalPages - 3) {
-        pages.push(1);
-        pages.push("...");
+        // Show 1, ..., last-4, last-3, last-2, last-1, last
+        if (totalPages > 6) {
+          pages.push("...");
+        }
         for (let i = totalPages - 4; i <= totalPages; i++) {
-          pages.push(i);
+          if (i > 1) pages.push(i);
         }
       } else {
-        pages.push(1);
+        // Show 1, ..., current-1, current, current+1, ..., last
         pages.push("...");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) {
           pages.push(i);
@@ -48,7 +66,7 @@ export function usePagination(
       }
     }
 
-    return pages;
+    return [...new Set(pages)]; // Remove duplicates
   });
 
   const getPaginationInfo = computed(() => {
@@ -77,7 +95,10 @@ export function usePagination(
   });
 
   return {
+    pagination,
     getVisiblePages,
     getPaginationInfo,
+    canPreviousPage,
+    canNextPage,
   };
 }

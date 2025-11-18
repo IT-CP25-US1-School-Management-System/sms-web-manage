@@ -36,6 +36,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/dataset",
+      name: ROUTE_NAMES.DATASET,
+      component: () => import("@/views/DatasetView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/:pathMatch(.*)*",
       redirect: { name: ROUTE_NAMES.HOME },
     },

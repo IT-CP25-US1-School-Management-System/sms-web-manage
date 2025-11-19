@@ -9,6 +9,8 @@ export const ROUTE_NAMES = {
   PROFILE: "Profile",
   MANAGE_DATABASE: "ManageDatabase",
   DATASET: "Dataset",
+  DATASET_CREATE: "DatasetCreate",
+  DATASET_EDIT: "DatasetEdit",
   INTROSPECTION: "Introspection",
 } as const;
 

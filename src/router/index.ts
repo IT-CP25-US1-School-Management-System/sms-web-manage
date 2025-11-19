@@ -40,6 +40,20 @@ const router = createRouter({
       name: ROUTE_NAMES.DATASET,
       component: () => import("@/views/dataset/DatasetView.vue"),
       meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.DATASET_CREATE,
+          component: () => import("@/views/dataset/DatasetCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: ":id/edit",
+          name: ROUTE_NAMES.DATASET_EDIT,
+          component: () => import("@/views/dataset/DatasetEdit.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
     },
     {
       path: "/:pathMatch(.*)*",

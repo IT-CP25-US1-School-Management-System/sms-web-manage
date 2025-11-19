@@ -38,7 +38,7 @@ const router = createRouter({
     {
       path: "/dataset",
       name: ROUTE_NAMES.DATASET,
-      component: () => import("@/views/DatasetView.vue"),
+      component: () => import("@/views/dataset/DatasetView.vue"),
       meta: { requiresAuth: true },
     },
     {

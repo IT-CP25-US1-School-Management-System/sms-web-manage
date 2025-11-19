@@ -60,9 +60,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, X } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, X, MoreHorizontal, Edit } from 'lucide-vue-next'
 import { dataApiInstance } from '@/stores/api'
 import { DATASET_SENSITIVITY } from '@/lib/constants'
 import type { Dataset, DatasetSearchParams, DatasetSearchResponse, ApiResponse, DatasetUpsert } from '@/types/dataset'
@@ -78,6 +83,8 @@ const searchTimeout = ref<number | null>(null)
 const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const datasetToDelete = ref<Dataset | null>(null)
+const showEditDialog = ref(false)
+const datasetToEdit = ref<Dataset | null>(null)
 
 // Form validation schema
 const datasetSchema = toTypedSchema(z.object({
@@ -217,6 +224,11 @@ const debouncedSearch = () => {
   }, 500)
 }
 
+const handleEditClick = (dataset: Dataset) => {
+  datasetToEdit.value = dataset
+  showEditDialog.value = true
+}
+
 const handleDeleteClick = (dataset: Dataset) => {
   datasetToDelete.value = dataset
   showDeleteDialog.value = true
@@ -288,15 +300,7 @@ const getSensitivityColor = (sensitivity: string) => {
   }
 }
 
-const getSensitivityText = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC: return 'สาธารณะ'
-    case DATASET_SENSITIVITY.INTERNAL: return 'ภายใน'
-    case DATASET_SENSITIVITY.CONFIDENTIAL: return 'ความลับ'
-    case DATASET_SENSITIVITY.RESTRICTED: return 'จำกัด'
-    default: return 'ไม่ระบุ'
-  }
-}
+
 
 const goToPage = (page: number) => {
   paginationData.value.page = page
@@ -462,28 +466,44 @@ onMounted(() => {
                   <span class="text-sm">{{ dataset.owner }}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs">
-                    {{ getSensitivityText(dataset.sensitivity) }}
+                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs capitalize">
+                    {{ dataset.sensitivity }}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge v-if="dataset.has_pii" variant="destructive" class="text-xs">
                     PII
                   </Badge>
-                  <span v-else class="text-muted-foreground text-sm">-</span>
+                  <span v-else class="text-muted-foreground text-sm">  -</span>
                 </TableCell>
                 <TableCell class="text-right">
                   <div class="flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      class="text-destructive hover:text-destructive"
-                      @click="handleDeleteClick(dataset)"
-                      :disabled="isDeleting === dataset.id"
-                    >
-                      <Loader2 v-if="isDeleting === dataset.id" class="h-4 w-4 animate-spin" />
-                      <Trash2 v-else class="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="h-8 w-8 p-0"
+                          :disabled="isDeleting === dataset.id"
+                        >
+                          <Loader2 v-if="isDeleting === dataset.id" class="h-4 w-4 animate-spin" />
+                          <MoreHorizontal v-else class="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem @click="handleEditClick(dataset)">
+                          <Edit class="mr-2 h-4 w-4" />
+                          แก้ไข
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          @click="handleDeleteClick(dataset)" 
+                          class="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 class="mr-2 h-4 w-4" />
+                          ลบ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
@@ -557,7 +577,7 @@ onMounted(() => {
           <!-- Dataset ID -->
           <FormField v-slot="{ componentField }" name="id">
             <FormItem>
-              <FormLabel>Dataset ID *</FormLabel>
+              <FormLabel>Dataset ID <span class="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -575,7 +595,7 @@ onMounted(() => {
           <!-- Dataset Name -->
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
-              <FormLabel>ชื่อ Dataset *</FormLabel>
+              <FormLabel>ชื่อ Dataset <span class="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -589,7 +609,7 @@ onMounted(() => {
           <!-- Description -->
           <FormField v-slot="{ componentField }" name="description">
             <FormItem>
-              <FormLabel>คำอธิบาย *</FormLabel>
+              <FormLabel>คำอธิบาย <span class="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -603,7 +623,7 @@ onMounted(() => {
           <!-- Domain -->
           <FormField v-slot="{ componentField }" name="domain">
             <FormItem>
-              <FormLabel>Domain *</FormLabel>
+              <FormLabel>Domain <span class="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -617,7 +637,7 @@ onMounted(() => {
           <!-- Owner -->
           <FormField v-slot="{ componentField }" name="owner">
             <FormItem>
-              <FormLabel>Owner *</FormLabel>
+              <FormLabel>Owner <span class="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -713,6 +733,35 @@ onMounted(() => {
           <Button @click="handleCreateDataset" :disabled="isCreating">
             <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
             สร้าง Dataset
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Edit Dataset Dialog -->
+    <Sheet v-model:open="showEditDialog">
+      <SheetContent class="w-[400px] sm:w-[540px] p-6">
+        <SheetHeader>
+          <SheetTitle>แก้ไข Dataset</SheetTitle>
+          <SheetDescription>
+            แก้ไขข้อมูล dataset "{{ datasetToEdit?.name }}"
+          </SheetDescription>
+        </SheetHeader>
+        
+        <div class="grid gap-6 py-6">
+          <!-- TODO: Add edit form fields here -->
+          <div class="text-center text-muted-foreground py-8">
+            <Edit class="mx-auto h-12 w-12 mb-4" />
+            <p>ฟีเจ็อร์แก้ไข Dataset กำลังจะมาเร็วๆ นี้</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            @click="showEditDialog = false; datasetToEdit = null"
+          >
+            ปิด
           </Button>
         </div>
       </SheetContent>

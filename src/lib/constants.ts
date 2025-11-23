@@ -12,6 +12,8 @@ export const ROUTE_NAMES = {
   MANAGE_DATABASE_CREATE: "ManageDatabaseCreate",
   MANAGE_DATABASE_UPDATE: "ManageDatabaseUpdate",
   DATASET: "Dataset",
+  DATASET_CREATE: "DatasetCreate",
+  DATASET_EDIT: "DatasetEdit",
   INTROSPECTION: "Introspection",
 } as const;
 

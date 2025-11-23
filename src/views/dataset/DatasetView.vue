@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { usePagination } from '@/composables/usePagination'
-import { useForm } from 'vee-validate'
-import { z } from 'zod'
-import { toTypedSchema } from '@vee-validate/zod'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,13 +18,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
-import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -34,23 +25,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,53 +34,30 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, X } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, MoreHorizontal, Edit } from 'lucide-vue-next'
 import { dataApiInstance } from '@/stores/api'
-import { DATASET_SENSITIVITY } from '@/lib/constants'
-import type { Dataset, DatasetSearchParams, DatasetSearchResponse, ApiResponse, DatasetUpsert } from '@/types/dataset'
+import { DATASET_SENSITIVITY, ROUTE_NAMES } from '@/lib/constants'
+import type { Dataset, DatasetSearchParams, DatasetSearchResponse, ApiResponse } from '@/types/dataset'
+
+const router = useRouter()
+const route = useRoute()
 
 // Reactive data
 const datasets = ref<Dataset[]>([])
 const searchQuery = ref('')
 const isLoading = ref(false)
 const isDeleting = ref<string | null>(null)
-const isCreating = ref(false)
 const errorMessage = ref<string | null>(null)
 const searchTimeout = ref<number | null>(null)
-const showCreateDialog = ref(false)
 const showDeleteDialog = ref(false)
 const datasetToDelete = ref<Dataset | null>(null)
-
-// Form validation schema
-const datasetSchema = toTypedSchema(z.object({
-  id: z.string().min(1, 'กรุณาระบุ Dataset ID').max(50, 'Dataset ID ต้องไม่เกิน 50 ตัวอักษร').regex(/^[a-z0-9_]+$/, 'Dataset ID ต้องใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น'),
-  name: z.string().min(1, 'กรุณาระบุชื่อ Dataset').max(100, 'ชื่อ Dataset ต้องไม่เกิน 100 ตัวอักษร'),
-  description: z.string().min(1, 'กรุณาระบุคำอธิบาย Dataset').max(500, 'คำอธิบายต้องไม่เกิน 500 ตัวอักษร'),
-  domain: z.string().min(1, 'กรุณาระบุ Domain').max(50, 'Domain ต้องไม่เกิน 50 ตัวอักษร'),
-  owner: z.string().min(1, 'กรุณาระบุชื่อ Owner').max(100, 'ชื่อ Owner ต้องไม่เกิน 100 ตัวอักษร'),
-  tags: z.array(z.string()).optional(),
-  has_pii: z.boolean(),
-  sensitivity: z.enum([DATASET_SENSITIVITY.PUBLIC, DATASET_SENSITIVITY.INTERNAL, DATASET_SENSITIVITY.CONFIDENTIAL, DATASET_SENSITIVITY.RESTRICTED])
-}))
-
-// Form setup
-const { handleSubmit, resetForm: resetVeeForm, values, setFieldValue } = useForm({
-  validationSchema: datasetSchema,
-  initialValues: {
-    id: '',
-    name: '',
-    description: '',
-    domain: '',
-    owner: '',
-    tags: [] as string[],
-    has_pii: false,
-    sensitivity: DATASET_SENSITIVITY.PUBLIC
-  }
-})
-
-const newTag = ref('')
 
 const paginationData = ref({
   page: 1,
@@ -128,23 +79,6 @@ const getDatasets = async (params?: DatasetSearchParams): Promise<DatasetSearchR
   } catch (error: any) {
     console.error('Error fetching datasets:', error);
     const errorMessage = error.response?.data?.message || 'ไม่สามารถโหลดข้อมูล datasets ได้';
-    throw new Error(errorMessage);
-  }
-}
-
-const createDataset = async (dataset: DatasetUpsert): Promise<ApiResponse<any>> => {
-  try {
-    const response = await dataApiInstance.post<ApiResponse<any>>("/v1/datasets", dataset);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error creating dataset:', error);
-    const errorMessage = error.response?.data?.message || 'ไม่สามารถสร้าง dataset ได้';
-    if (error.response?.status === 400) {
-      throw new Error('ข้อมูล dataset ไม่ถูกต้อง โปรดตรวจสอบข้อมูลให้ครบถ้วน');
-    }
-    if (error.response?.status === 409) {
-      throw new Error('Dataset ID นี้มีอยู่แล้ว โปรดใช้ ID อื่น');
-    }
     throw new Error(errorMessage);
   }
 }
@@ -217,6 +151,10 @@ const debouncedSearch = () => {
   }, 500)
 }
 
+const goToEditDataset = (dataset: Dataset) => {
+  router.push({ name: ROUTE_NAMES.DATASET_EDIT, params: { id: dataset.id } })
+}
+
 const handleDeleteClick = (dataset: Dataset) => {
   datasetToDelete.value = dataset
   showDeleteDialog.value = true
@@ -240,43 +178,9 @@ const handleDelete = async () => {
   }
 }
 
-//Function for reset form add new dataset
-const resetForm = () => {
-  resetVeeForm()
-  newTag.value = ''
+const goToCreateDataset = () => {
+  router.push({ name: ROUTE_NAMES.DATASET_CREATE })
 }
-
-const addTag = () => {
-  if (newTag.value.trim() && !values.tags?.includes(newTag.value.trim())) {
-    const currentTags = values.tags || []
-    setFieldValue('tags', [...currentTags, newTag.value.trim()])
-    newTag.value = ''
-  }
-}
-
-const removeTag = (tagToRemove: string) => {
-  if (values.tags) {
-    setFieldValue('tags', values.tags.filter(tag => tag !== tagToRemove))
-  }
-}
-
-
-
-const handleCreateDataset = handleSubmit(async (formData) => {
-  isCreating.value = true
-  try {
-    await createDataset(formData as DatasetUpsert)
-    showSuccess(`สร้าง dataset "${formData.name}" เรียบร้อยแล้ว`)
-    showCreateDialog.value = false
-    resetForm()
-    await loadDatasets()
-  } catch (error: any) {
-    console.error('Error creating dataset:', error)
-    showError(error.message || 'ไม่สามารถสร้าง dataset ได้')
-  } finally {
-    isCreating.value = false
-  }
-})
 
 const getSensitivityColor = (sensitivity: string) => {
   switch (sensitivity) {
@@ -288,15 +192,7 @@ const getSensitivityColor = (sensitivity: string) => {
   }
 }
 
-const getSensitivityText = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC: return 'สาธารณะ'
-    case DATASET_SENSITIVITY.INTERNAL: return 'ภายใน'
-    case DATASET_SENSITIVITY.CONFIDENTIAL: return 'ความลับ'
-    case DATASET_SENSITIVITY.RESTRICTED: return 'จำกัด'
-    default: return 'ไม่ระบุ'
-  }
-}
+
 
 const goToPage = (page: number) => {
   paginationData.value.page = page
@@ -322,6 +218,14 @@ watch(searchQuery, () => {
   debouncedSearch()
 })
 
+// Watch route changes to reload data when returning from create/edit
+watch(() => route.name, (newName, oldName) => {
+  // Reload when returning to dataset list from create/edit
+  if (newName === ROUTE_NAMES.DATASET && (oldName === ROUTE_NAMES.DATASET_CREATE || oldName === ROUTE_NAMES.DATASET_EDIT)) {
+    loadDatasets()
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   loadDatasets()
@@ -339,7 +243,7 @@ onMounted(() => {
             จัดการและดูข้อมูลชุดข้อมูลต่าง ๆ ของระบบ
           </p>
         </div>
-        <Button @click="showCreateDialog = true" class="flex items-center gap-2">
+        <Button @click="goToCreateDataset" class="flex items-center gap-2">
           <Plus class="h-4 w-4" />
           สร้าง Dataset ใหม่
         </Button>
@@ -411,7 +315,7 @@ onMounted(() => {
             <p class="text-muted-foreground mb-4">
               {{ searchQuery ? 'ไม่พบ dataset ที่ตรงกับการค้นหา' : 'ยังไม่มี dataset ในระบบ' }}
             </p>
-            <Button @click="showCreateDialog = true" variant="outline">
+            <Button @click="goToCreateDataset" variant="outline">
               <Plus class="h-4 w-4 mr-2" />
               สร้าง Dataset แรก
             </Button>
@@ -462,28 +366,44 @@ onMounted(() => {
                   <span class="text-sm">{{ dataset.owner }}</span>
                 </TableCell>
                 <TableCell>
-                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs">
-                    {{ getSensitivityText(dataset.sensitivity) }}
+                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs capitalize">
+                    {{ dataset.sensitivity }}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge v-if="dataset.has_pii" variant="destructive" class="text-xs">
                     PII
                   </Badge>
-                  <span v-else class="text-muted-foreground text-sm">-</span>
+                  <span v-else class="text-muted-foreground text-sm">  -</span>
                 </TableCell>
                 <TableCell class="text-right">
                   <div class="flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      class="text-destructive hover:text-destructive"
-                      @click="handleDeleteClick(dataset)"
-                      :disabled="isDeleting === dataset.id"
-                    >
-                      <Loader2 v-if="isDeleting === dataset.id" class="h-4 w-4 animate-spin" />
-                      <Trash2 v-else class="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="h-8 w-8 p-0"
+                          :disabled="isDeleting === dataset.id"
+                        >
+                          <Loader2 v-if="isDeleting === dataset.id" class="h-4 w-4 animate-spin" />
+                          <MoreHorizontal v-else class="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem @click="goToEditDataset(dataset)">
+                          <Edit class="mr-2 h-4 w-4" />
+                          แก้ไข
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          @click="handleDeleteClick(dataset)" 
+                          class="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 class="mr-2 h-4 w-4" />
+                          ลบ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
@@ -543,180 +463,8 @@ onMounted(() => {
       </Card>
     </div>
 
-    <!-- Create Dataset Dialog -->
-    <Sheet v-model:open="showCreateDialog">
-      <SheetContent class="w-[400px] sm:w-[540px] p-6">
-        <SheetHeader>
-          <SheetTitle>สร้าง Dataset ใหม่</SheetTitle>
-          <SheetDescription>
-            กรอกข้อมูลเพื่อสร้าง dataset ใหม่ในระบบ
-          </SheetDescription>
-        </SheetHeader>
-        
-        <div class="grid gap-6 py-6">
-          <!-- Dataset ID -->
-          <FormField v-slot="{ componentField }" name="id">
-            <FormItem>
-              <FormLabel>Dataset ID *</FormLabel>
-              <FormControl>
-                <Input
-                  v-bind="componentField"
-                  placeholder="เช่น person_data_stat_view"
-                  class="font-mono"
-                />
-              </FormControl>
-              <!-- <FormDescription>
-                ใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น (เช่น student_records_2024)
-              </FormDescription> -->
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Dataset Name -->
-          <FormField v-slot="{ componentField }" name="name">
-            <FormItem>
-              <FormLabel>ชื่อ Dataset *</FormLabel>
-              <FormControl>
-                <Input
-                  v-bind="componentField"
-                  placeholder="เช่น Student Records 2024"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Description -->
-          <FormField v-slot="{ componentField }" name="description">
-            <FormItem>
-              <FormLabel>คำอธิบาย *</FormLabel>
-              <FormControl>
-                <Input
-                  v-bind="componentField"
-                  placeholder="อธิบายเกี่ยวกับข้อมูลในชุดข้อมูลนี้..."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Domain -->
-          <FormField v-slot="{ componentField }" name="domain">
-            <FormItem>
-              <FormLabel>Domain *</FormLabel>
-              <FormControl>
-                <Input
-                  v-bind="componentField"
-                  placeholder="education, finance, healthcare..."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Owner -->
-          <FormField v-slot="{ componentField }" name="owner">
-            <FormItem>
-              <FormLabel>Owner *</FormLabel>
-              <FormControl>
-                <Input
-                  v-bind="componentField"
-                  placeholder="เช่น Data Team, John Doe, Marketing Department"
-                />
-              </FormControl>
-              <FormDescription>
-                ระบุบุคคลหรือทีมที่เป็นเจ้าของชุดข้อมูลนี้
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Tags -->
-          <div class="grid gap-2">
-            <Label>Tags</Label>
-            <div class="flex gap-2">
-              <Input
-                v-model="newTag"
-                placeholder="เพิ่ม tag..."
-                @keyup.enter="addTag"
-                class="flex-1"
-              />
-              <Button @click="addTag" variant="outline" size="sm">
-                เพิ่ม
-              </Button>
-            </div>
-            <div v-if="values.tags && values.tags.length > 0" class="flex flex-wrap gap-1">
-              <Badge
-                v-for="tag in values.tags"
-                :key="tag"
-                variant="secondary"
-                class="flex items-center gap-1"
-              >
-                {{ tag }}
-                <button @click="removeTag(tag)" class="ml-1 hover:text-destructive">
-                  <X class="h-3 w-3" />
-                </button>
-              </Badge>
-            </div>
-          </div>
-
-          <!-- Sensitivity -->
-          <FormField v-slot="{ componentField }" name="sensitivity">
-            <FormItem>
-              <FormLabel>Sensitivity Level</FormLabel>
-              <Select v-bind="componentField">
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือก Sensitivity Level" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem :value="DATASET_SENSITIVITY.PUBLIC">สาธารณะ (Public)</SelectItem>
-                  <SelectItem :value="DATASET_SENSITIVITY.INTERNAL">ภายใน (Internal)</SelectItem>
-                  <SelectItem :value="DATASET_SENSITIVITY.CONFIDENTIAL">ความลับ (Confidential)</SelectItem>
-                  <SelectItem :value="DATASET_SENSITIVITY.RESTRICTED">จำกัด (Restricted)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Has PII -->
-          <FormField v-slot="{ value, handleChange }" name="has_pii">
-            <FormItem class="flex flex-row items-start space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  :checked="value"
-                  @update:checked="handleChange"
-                />
-              </FormControl>
-              <div class="space-y-1 leading-none">
-                <FormLabel>
-                  ข้อมูลมีส่วนที่เป็นข้อมูลส่วนบุคคล (PII)
-                </FormLabel>
-                <FormDescription>
-                  ทำเครื่องหมายหากชุดข้อมูลนี้มีข้อมูลส่วนบุคคล
-                </FormDescription>
-              </div>
-            </FormItem>
-          </FormField>
-        </div>
-
-        <div class="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            @click="showCreateDialog = false; resetForm()"
-            :disabled="isCreating"
-          >
-            ยกเลิก
-          </Button>
-          <Button @click="handleCreateDataset" :disabled="isCreating">
-            <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
-            สร้าง Dataset
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <!-- Nested Route View for Modal Routing -->
+    <router-view />
 
     <!-- Delete Confirmation Dialog -->
     <AlertDialog v-model:open="showDeleteDialog">

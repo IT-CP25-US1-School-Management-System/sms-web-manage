@@ -32,7 +32,27 @@ const router = createRouter({
     {
       path: "/manage-database",
       name: ROUTE_NAMES.MANAGE_DATABASE,
-      component: () => import("@/views/ManageDatabaseView.vue"),
+      component: () => import("@/views/introspection/ManageDatabaseView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "/manage-database/create",
+          name: ROUTE_NAMES.MANAGE_DATABASE_CREATE,
+          component: () => import("@/views/introspection/ManageDatabaseCrate.vue"),
+          meta: { requiresAuth: true },
+        },
+          {
+          path: "/manage-database/:id/edit",
+          name: ROUTE_NAMES.MANAGE_DATABASE_UPDATE,
+          component: () => import("@/views/introspection/ManageDatabaseUpdate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/manage-database/:sourceId",
+      name: ROUTE_NAMES.MANAGE_DATABASE_WITH_ID,
+      component: () => import("@/views/introspection/DatabaseDetail.vue"),
       meta: { requiresAuth: true },
     },
     {

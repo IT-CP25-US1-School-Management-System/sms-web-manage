@@ -44,6 +44,34 @@ export interface DatasetSearchResponse {
   total_rows: number;
 }
 
+export interface DatasetVersion {
+  dataset_id: string;
+  version: string;
+  source_id: string;
+  status: 'draft' | 'active' | 'deprecated';
+  schema: any;
+  access_policies: any[];
+  policies: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DatasetVersionSearchParams {
+  page?: number;
+  per_page?: number;
+  source_id?: string;
+  search_word?: string;
+  status?: 'draft' | 'active' | 'deprecated';
+}
+
+export interface DatasetVersionSearchResponse {
+  data: DatasetVersion[];
+  page: number;
+  per_page: number;
+  total_pages: number;
+  total_rows: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;

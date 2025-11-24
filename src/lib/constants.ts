@@ -14,6 +14,9 @@ export const ROUTE_NAMES = {
   DATASET: "Dataset",
   DATASET_CREATE: "DatasetCreate",
   DATASET_EDIT: "DatasetEdit",
+  DATASET_VERSION: "DatasetVersion",
+  DATASET_VERSION_CREATE: "DatasetVersionCreate",
+  DATASET_VERSION_SERVING: "DatasetVersionServing",
   INTROSPECTION: "Introspection",
 } as const;
 

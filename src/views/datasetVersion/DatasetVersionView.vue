@@ -30,7 +30,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { ArrowLeft, HardDrive, Tag, Shield, User, FileText, Plus, MoreHorizontal, Eye, XCircle, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, HardDrive, Tag, Shield, User, FileText, Plus, MoreHorizontal, Eye, XCircle, CheckCircle, Loader2 } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import { dataApiInstance } from '@/stores/api'
 import type { Dataset, DatasetVersion, DatasetVersionSearchResponse } from '@/types/dataset'
@@ -54,10 +54,10 @@ const perPage = ref(10)
 const isDetailOpen = ref(false)
 const selectedVersion = ref<DatasetVersion | null>(null)
 
-// Delete confirmation
-const showDeleteDialog = ref(false)
-const versionToDeactivate = ref<DatasetVersion | null>(null)
-const isDeactivating = ref(false)
+// Status change confirmation
+const showStatusDialog = ref(false)
+const versionToChange = ref<DatasetVersion | null>(null)
+const isChangingStatus = ref(false)
 
 const goBack = () => {
   router.push({ name: ROUTE_NAMES.DATASET })
@@ -145,27 +145,29 @@ const closeDetail = () => {
   }, 300)
 }
 
-const handleDeactivateClick = (version: DatasetVersion) => {
-  versionToDeactivate.value = version
-  showDeleteDialog.value = true
+const handleStatusChangeClick = (version: DatasetVersion) => {
+  versionToChange.value = version
+  showStatusDialog.value = true
 }
 
-const handleDeactivate = async () => {
-  if (!versionToDeactivate.value) return
+const handleStatusChange = async () => {
+  if (!versionToChange.value) return
   
-  isDeactivating.value = true
+  const newStatus = versionToChange.value.status === 'deprecated' ? 'active' : 'deprecated'
+  
+  isChangingStatus.value = true
   try {
     await dataApiInstance.patch(
-      `/v1/datasets/${datasetId.value}/versions/${versionToDeactivate.value.version}`,
-      { status: 'deprecated' }
+      `/v1/datasets/${datasetId.value}/versions/${versionToChange.value.version}`,
+      { status: newStatus }
     )
     await loadVersions()
   } catch (error) {
-    console.error('Failed to deactivate version:', error)
+    console.error('Failed to change status:', error)
   } finally {
-    isDeactivating.value = false
-    showDeleteDialog.value = false
-    versionToDeactivate.value = null
+    isChangingStatus.value = false
+    showStatusDialog.value = false
+    versionToChange.value = null
   }
 }
 
@@ -339,9 +341,9 @@ onActivated(() => {
                           variant="ghost"
                           size="sm"
                           class="h-8 w-8 p-0"
-                          :disabled="isDeactivating"
+                          :disabled="isChangingStatus"
                         >
-                          <Loader2 v-if="isDeactivating" class="h-4 w-4 animate-spin" />
+                          <Loader2 v-if="isChangingStatus" class="h-4 w-4 animate-spin" />
                           <MoreHorizontal v-else class="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -351,11 +353,11 @@ onActivated(() => {
                           Detail
                         </DropdownMenuItem>
                         <DropdownMenuItem 
-                          @click="handleDeactivateClick(version)"
-                          :disabled="version.status === 'deprecated'"
-                          class="text-destructive focus:text-destructive">
-                          <XCircle class="h-4 w-4 mr-2" />
-                          Deprecated
+                          @click="handleStatusChangeClick(version)"
+                          :class="version.status === 'deprecated' ? 'text-green-600 focus:text-green-600' : 'text-destructive focus:text-destructive'">
+                          <CheckCircle v-if="version.status === 'deprecated'" class="h-4 w-4 mr-2" />
+                          <XCircle v-else class="h-4 w-4 mr-2" />
+                          {{ version.status === 'deprecated' ? 'Activate' : 'Deprecated' }}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -373,20 +375,21 @@ onActivated(() => {
       </Card>
     </div>
 
-    <!-- Deactivate Confirmation Dialog -->
-    <AlertDialog v-model:open="showDeleteDialog">
+    <!-- Status Change Confirmation Dialog -->
+    <AlertDialog v-model:open="showStatusDialog">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>เปลี่ยนสถานะเป็น Deprecated?</AlertDialogTitle>
+          <AlertDialogTitle>เปลี่ยนสถานะ Version?</AlertDialogTitle>
           <AlertDialogDescription>
-            คุณต้องการเปลี่ยนสถานะของ version <strong>{{ versionToDeactivate?.version }}</strong> เป็น deprecated หรือไม่?
+            คุณต้องการเปลี่ยนสถานะของ version <strong>{{ versionToChange?.version }}</strong> 
+            เป็น <strong>{{ versionToChange?.status === 'deprecated' ? 'active' : 'deprecated' }}</strong> หรือไม่?
             การดำเนินการนี้สามารถเปลี่ยนกลับได้ในภายหลัง
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-          <AlertDialogAction @click="handleDeactivate" :disabled="isDeactivating">
-            <Loader2 v-if="isDeactivating" class="mr-2 h-4 w-4 animate-spin" />
+          <AlertDialogAction @click="handleStatusChange" :disabled="isChangingStatus">
+            <Loader2 v-if="isChangingStatus" class="mr-2 h-4 w-4 animate-spin" />
             ยืนยัน
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -155,6 +155,10 @@ const goToEditDataset = (dataset: Dataset) => {
   router.push({ name: ROUTE_NAMES.DATASET_EDIT, params: { id: dataset.id } })
 }
 
+const goToDatasetVersion = (dataset: Dataset) => {
+  router.push({ name: ROUTE_NAMES.DATASET_VERSION, params: { id: dataset.id } })
+}
+
 const handleDeleteClick = (dataset: Dataset) => {
   datasetToDelete.value = dataset
   showDeleteDialog.value = true
@@ -331,12 +335,19 @@ onMounted(() => {
                 <TableHead>Owner</TableHead>
                 <TableHead>Sensitivity</TableHead>
                 <TableHead>Has PII</TableHead>
-                <TableHead class="text-right">การดำเนินการ</TableHead>
+                <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="dataset in datasets" :key="dataset.id">
-                <TableCell>
+              <TableRow 
+                v-for="dataset in datasets" 
+                :key="dataset.id" 
+                class="hover:bg-muted/50 transition-colors"
+              >
+                <TableCell 
+                  @click="goToDatasetVersion(dataset)"
+                  class="cursor-pointer"
+                >
                   <div class="flex items-center gap-2">
                     <FileText class="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -376,7 +387,7 @@ onMounted(() => {
                   </Badge>
                   <span v-else class="text-muted-foreground text-sm">  -</span>
                 </TableCell>
-                <TableCell class="text-right">
+                <TableCell class="text-right" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -391,6 +402,10 @@ onMounted(() => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem @click="goToDatasetVersion(dataset)">
+                          <FileText class="mr-2 h-4 w-4" />
+                          ดูรายละเอียด
+                        </DropdownMenuItem>
                         <DropdownMenuItem @click="goToEditDataset(dataset)">
                           <Edit class="mr-2 h-4 w-4" />
                           แก้ไข

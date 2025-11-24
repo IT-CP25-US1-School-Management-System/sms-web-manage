@@ -56,6 +56,26 @@ const router = createRouter({
       ],
     },
     {
+      path: "/dataset/:id/versions",
+      name: ROUTE_NAMES.DATASET_VERSION,
+      component: () => import("@/views/datasetVersion/DatasetVersionView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.DATASET_VERSION_CREATE,
+          component: () => import("@/views/datasetVersion/DatasetVersionCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/dataset/:id/versions/:version/serving",
+      name: ROUTE_NAMES.DATASET_VERSION_SERVING,
+      component: () => import("@/views/serving/DatasetVersionServingView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/:pathMatch(.*)*",
       redirect: { name: ROUTE_NAMES.HOME },
     },

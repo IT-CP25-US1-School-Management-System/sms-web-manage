@@ -17,7 +17,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LogOut, Home, Settings, User, Database } from "lucide-vue-next";
+import { LogOut, Home, Settings, User, Database, HardDrive,FileText } from "lucide-vue-next";
 import AppSidebar from "@/layouts/AppSidebar.vue";
 import { useAuthStore } from "@/stores/auth";
 import ModeToggle from "@/components/ModeToggle.vue";
@@ -31,6 +31,9 @@ const breadcrumbConfig = {
   Settings: { label: "ตั้งค่าระบบ", icon: Settings },
   Profile: { label: "โปรไฟล์", icon: User },
   ManageDatabase: { label: "จัดการฐานข้อมูล", icon: Database },
+  Dataset: { label: "Dataset", icon: HardDrive },
+  DatasetVersion: { label: "Dataset Version", icon: FileText },
+  DatasetVersionServing: { label: "View Data", icon: Database },
 };
 
 const currentBreadcrumbs = computed(() => {
@@ -75,6 +78,67 @@ const currentBreadcrumbs = computed(() => {
       label: breadcrumbConfig.ManageDatabase.label,
       icon: breadcrumbConfig.ManageDatabase.icon,
       to: { name: ROUTE_NAMES.MANAGE_DATABASE },
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DATASET || routeName === ROUTE_NAMES.DATASET_CREATE || routeName === ROUTE_NAMES.DATASET_EDIT) {
+    breadcrumbs.push({
+      label: breadcrumbConfig.Dataset.label,
+      icon: breadcrumbConfig.Dataset.icon,
+      to: { name: ROUTE_NAMES.DATASET },
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DATASET_VERSION) {
+    // Dataset -> DatasetVersion (ใช้ ID จาก params)
+    breadcrumbs.push({
+      label: breadcrumbConfig.Dataset.label,
+      icon: breadcrumbConfig.Dataset.icon,
+      to: { name: ROUTE_NAMES.DATASET },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: (route.params.id as string) || breadcrumbConfig.DatasetVersion.label,
+      icon: breadcrumbConfig.DatasetVersion.icon,
+      to: null,
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DATASET_VERSION_CREATE) {
+    // Dataset -> DatasetVersion -> Create
+    breadcrumbs.push({
+      label: breadcrumbConfig.Dataset.label,
+      icon: breadcrumbConfig.Dataset.icon,
+      to: { name: ROUTE_NAMES.DATASET },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: (route.params.id as string) || breadcrumbConfig.DatasetVersion.label,
+      icon: breadcrumbConfig.DatasetVersion.icon,
+      to: { name: ROUTE_NAMES.DATASET_VERSION, params: { id: route.params.id } },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: "สร้าง Version",
+      icon: null,
+      to: null,
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DATASET_VERSION_SERVING) {
+    // Dataset -> DatasetVersion -> View Data
+    breadcrumbs.push({
+      label: breadcrumbConfig.Dataset.label,
+      icon: breadcrumbConfig.Dataset.icon,
+      to: { name: ROUTE_NAMES.DATASET },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: (route.params.id as string) || breadcrumbConfig.DatasetVersion.label,
+      icon: breadcrumbConfig.DatasetVersion.icon,
+      to: { name: ROUTE_NAMES.DATASET_VERSION, params: { id: route.params.id } },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: `${route.params.version} - ${breadcrumbConfig.DatasetVersionServing.label}`,
+      icon: breadcrumbConfig.DatasetVersionServing.icon,
+      to: null,
       isLast: true,
     });
   } else {

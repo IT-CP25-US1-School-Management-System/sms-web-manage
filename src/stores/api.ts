@@ -107,7 +107,7 @@ dataApiInstance.interceptors.response.use(
  */
 export async function getAuthUrl(): Promise<AuthorizeResponse> {
   const response = await authApiInstance.post<AuthorizeResponse>(
-    "/v1/oauth2/authorize"
+    "/v1/oauth2/login"
   );
   return response.data;
 }
@@ -160,5 +160,3 @@ export async function logout(): Promise<void> {
   setTokens(null);
   router.push({ name: ROUTE_NAMES.LOGIN });
 }
-
-

@@ -31,6 +31,7 @@ const breadcrumbConfig = {
   Settings: { label: "ตั้งค่าระบบ", icon: Settings },
   Profile: { label: "โปรไฟล์", icon: User },
   ManageDatabase: { label: "จัดการฐานข้อมูล", icon: Database },
+  ManageDatabaseWithID: { label: "รายละเอียดฐานข้อมูล", icon: Database },
   Dataset: { label: "Dataset", icon: HardDrive },
   DatasetVersion: { label: "Dataset Version", icon: FileText },
   DatasetVersionServing: { label: "View Data", icon: Database },
@@ -141,7 +142,22 @@ const currentBreadcrumbs = computed(() => {
       to: null,
       isLast: true,
     });
-  } else {
+  } else if (routeName === ROUTE_NAMES.MANAGE_DATABASE_WITH_ID) {
+      breadcrumbs.push({
+      label: breadcrumbConfig.ManageDatabase.label,
+      icon: breadcrumbConfig.ManageDatabase.icon,
+      to: { name: ROUTE_NAMES.MANAGE_DATABASE },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: breadcrumbConfig.ManageDatabaseWithID.label,
+      icon: breadcrumbConfig.ManageDatabaseWithID.icon,
+      to: { name: ROUTE_NAMES.MANAGE_DATABASE_WITH_ID, params: route.params },
+      isLast: true,
+    });
+  }
+  
+  else {
     breadcrumbs.push({
       label: routeName,
       icon: null,

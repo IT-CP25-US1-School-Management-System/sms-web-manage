@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import { ROUTE_NAMES } from "@/lib/constants";
-
-import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,12 +15,11 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LogOut, Home, Settings, User, Database, HardDrive,FileText } from "lucide-vue-next";
+import { Home, Settings, User, Database, HardDrive,FileText } from "lucide-vue-next";
 import AppSidebar from "@/layouts/AppSidebar.vue";
 import { useAuthStore } from "@/stores/auth";
 import ModeToggle from "@/components/ModeToggle.vue";
 
-const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 

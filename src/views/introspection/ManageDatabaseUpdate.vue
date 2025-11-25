@@ -85,15 +85,15 @@ const getDatabase = async (id: string): Promise<Database> => {
       `/v1/introspect/sources/${id}`
     );
     if (!response.data.data) {
-      throw new Error("ไม่พบข้อมูล dataset");
+      throw new Error("ไม่พบข้อมูล database");
     }
     return response.data.data;
   } catch (error: any) {
-    console.error(`Error fetching dataset ${id}:`, error);
+    console.error(`Error fetching database ${id}:`, error);
     const errorMessage =
-      error.response?.data?.message || "ไม่สามารถโหลดข้อมูล dataset ได้";
+      error.response?.data?.message || "ไม่สามารถโหลดข้อมูล database ได้";
     if (error.response?.status === 404) {
-      throw new Error("ไม่พบ dataset ที่ต้องการแก้ไข");
+      throw new Error("ไม่พบ database ที่ต้องการแก้ไข");
     }
     throw new Error(errorMessage);
   }
@@ -147,8 +147,8 @@ const loadDatabase = async () => {
       params: response.params || "",
     });
   } catch (error: any) {
-    console.error("Error loading dataset:", error);
-    showError(error.message || "ไม่สามารถโหลดข้อมูล dataset ได้");
+    console.error("Error loading database:", error);
+    showError(error.message || "ไม่สามารถโหลดข้อมูล database ได้");
     closeSheet();
   } finally {
     isLoading.value = false;
@@ -228,16 +228,20 @@ onMounted(() => {
     @update:open="(open) => !open && closeSheet()"
   >
     <SheetContent
-      class="sm:max-w-md max-w-sm p-6 overflow-y-auto overflow-x-hidden"
+      class="sm:max-w-md max-w-sm p-0 overflow-hidden flex flex-col"
     >
-      <SheetHeader>
+      <SheetHeader class="px-6 pt-6">
         <SheetTitle>แก้ไข Database ใหม่</SheetTitle>
         <SheetDescription> แก้ไขข้อมูล database ใหม่ในระบบ </SheetDescription>
       </SheetHeader>
-      <div class="space-y-6">
+      <div class="flex-1 overflow-y-auto px-6 py-6">
         <!-- Form Card -->
 
-        <form @submit="handleUpdateDatabase" class="grid gap-6">
+        <form
+          id="updateDatabaseForm"
+          @submit="handleUpdateDatabase"
+          class="grid gap-6"
+        >
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
               <FormLabel>ชื่อ Database *</FormLabel>
@@ -465,23 +469,23 @@ onMounted(() => {
               <FormMessage />
             </FormItem>
           </FormField>
-
-          <!-- Form Actions -->
-          <div class="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              @click="router.back()"
-              :disabled="isUpdating"
-            >
-              ยกเลิก
-            </Button>
-            <Button type="submit" :disabled="isUpdating">
-              <Loader2 v-if="isUpdating" class="h-4 w-4 animate-spin mr-2" />
-              บันทึก
-            </Button>
-          </div>
         </form>
+      </div>
+
+      <!-- Form Actions - Outside scroll area -->
+      <div class="flex justify-end gap-2 px-6 py-4 bg-background border-t">
+        <Button
+          type="button"
+          variant="outline"
+          @click="router.back()"
+          :disabled="isUpdating"
+        >
+          ยกเลิก
+        </Button>
+        <Button type="submit" form="updateDatabaseForm" :disabled="isUpdating">
+          <Loader2 v-if="isUpdating" class="h-4 w-4 animate-spin mr-2" />
+          บันทึก
+        </Button>
       </div>
     </SheetContent>
   </Sheet>

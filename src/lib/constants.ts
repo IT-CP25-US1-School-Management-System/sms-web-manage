@@ -18,6 +18,11 @@ export const ROUTE_NAMES = {
   DATASET_VERSION_CREATE: "DatasetVersionCreate",
   DATASET_VERSION_SERVING: "DatasetVersionServing",
   INTROSPECTION: "Introspection",
+  USERS: "Users",
+  ROLES: "Roles",
+  USERS_ASSIGN_ROLES: "UsersAssignRoles",
+  ROLES_CREATE: "RolesCreate",
+  ROLES_UPDATE: "RolesUpdate",
 } as const;
 
 export const DATASET_SENSITIVITY = {

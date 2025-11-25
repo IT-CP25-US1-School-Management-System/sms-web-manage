@@ -37,6 +37,8 @@ import {
   Database,
   ChevronRight,
   HardDrive,
+  FileKey,
+  Users
 } from "lucide-vue-next";
 
 import { getImgInitials } from "@/lib/helpers";
@@ -87,6 +89,14 @@ const menuConfig: {
       routeName: ROUTE_NAMES.DATASET,
       children: null,
     },
+    {
+      id: "user",
+      label: "จัดการผู้ใช้งาน",
+      icon: Users,
+      routeName: ROUTE_NAMES.USERS,
+      children: null,
+    },
+
     // ตัวอย่างการใช้ children - uncomment เมื่อต้องการใช้
     // {
     //   id: "example-with-children",

@@ -162,17 +162,21 @@ const closeSheet = () => {
     @update:open="(open) => !open && closeSheet()"
   >
     <SheetContent
-      class="sm:max-w-md max-w-sm p-6 overflow-y-auto overflow-x-hidden"
+      class="sm:max-w-md max-w-sm p-0 overflow-hidden flex flex-col"
     >
-      <SheetHeader>
+      <SheetHeader class="px-6 pt-6">
         <SheetTitle>สร้าง Database ใหม่</SheetTitle>
         <SheetDescription>
           กรอกข้อมูลเพื่อสร้าง database ใหม่ในระบบ
         </SheetDescription>
       </SheetHeader>
-      <div class="space-y-6">
+      <div class="flex-1 overflow-y-auto px-6 py-6">
         <!-- Form Card -->
-        <form @submit="handleCreateDatabase" class="grid gap-6">
+        <form
+          id="createDatabaseForm"
+          @submit="handleCreateDatabase"
+          class="grid gap-6"
+        >
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
               <FormLabel
@@ -403,23 +407,22 @@ const closeSheet = () => {
               <FormMessage />
             </FormItem>
           </FormField>
-
-          <!-- Form Actions -->
-          <div class="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              @click="router.back()"
-              :disabled="isCreating"
-            >
-              ยกเลิก
-            </Button>
-            <Button type="submit" :disabled="isCreating">
-              <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
-              สร้าง Database
-            </Button>
-          </div>
         </form>
+      </div>
+      <!-- Form Actions -->
+      <div class="flex justify-end gap-2 px-6 py-4 bg-background border-t">
+        <Button
+          type="button"
+          variant="outline"
+          @click="router.back()"
+          :disabled="isCreating"
+        >
+          ยกเลิก
+        </Button>
+        <Button type="submit" form="createDatabaseForm" :disabled="isCreating">
+          <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
+          สร้าง Database
+        </Button>
       </div>
     </SheetContent>
   </Sheet>

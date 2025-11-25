@@ -173,6 +173,7 @@ watch(openSchemaId, async (newId) => {
   console.log("schema opened", schema);
   await loadDatasets("tables", {
     source_id: schema.sources_id,
+    schema: schema.schema,
   });
 });
 
@@ -188,13 +189,19 @@ watch(openTableId, async (newId) => {
   if (!table) return;
   console.log("table opened", table);
   await loadDatasets("columns", {
-    source_id: table.sources_id,
+    source_id: route.params.sourceId as string,
+    schema: table.schema,
+    table: table.table_name,
   });
 });
 // Lifecycle
 onMounted(() => {
   loadDatasets("sources");
-  loadDatasets("schemas");
+  loadDatasets("schemas"
+    ,{
+    source_id: route.params.sourceId as string,
+  }
+  );
 });
 </script>
 

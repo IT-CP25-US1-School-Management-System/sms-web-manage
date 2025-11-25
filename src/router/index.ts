@@ -30,19 +30,19 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/manage-database",
+      path: "/database",
       name: ROUTE_NAMES.MANAGE_DATABASE,
       component: () => import("@/views/introspection/ManageDatabaseView.vue"),
       meta: { requiresAuth: true },
       children: [
         {
-          path: "/manage-database/create",
+          path: "/database/create",
           name: ROUTE_NAMES.MANAGE_DATABASE_CREATE,
           component: () => import("@/views/introspection/ManageDatabaseCrate.vue"),
           meta: { requiresAuth: true },
         },
           {
-          path: "/manage-database/:id/edit",
+          path: "/database/:id/edit",
           name: ROUTE_NAMES.MANAGE_DATABASE_UPDATE,
           component: () => import("@/views/introspection/ManageDatabaseUpdate.vue"),
           meta: { requiresAuth: true },
@@ -50,7 +50,7 @@ const router = createRouter({
       ],
     },
     {
-      path: "/manage-database/:sourceId",
+      path: "/database/:sourceId",
       name: ROUTE_NAMES.MANAGE_DATABASE_WITH_ID,
       component: () => import("@/views/introspection/DatabaseDetail.vue"),
       meta: { requiresAuth: true },
@@ -98,6 +98,40 @@ const router = createRouter({
     {
       path: "/:pathMatch(.*)*",
       redirect: { name: ROUTE_NAMES.HOME },
+    },
+    {
+      path: "/users",
+      name: ROUTE_NAMES.USERS,
+      component: () => import("@/views/users/UsersView.vue"),
+      meta: { requiresAuth: true },
+       children: [
+        {
+          path: "assign-roles",
+          name: ROUTE_NAMES.USERS_ASSIGN_ROLES,
+          component: () => import("@/views/users/AssignRoleModal.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/roles-management",
+      name: ROUTE_NAMES.ROLES,
+      component: () => import("@/views/roles/RolesView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.ROLES_CREATE,
+          component: () => import("@/views/roles/RolesCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+          {
+          path: "update/:roleId",
+          name: ROUTE_NAMES.ROLES_UPDATE,
+          component: () => import("@/views/roles/RolesUpdate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
     },
   ],
 });

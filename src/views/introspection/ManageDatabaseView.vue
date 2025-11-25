@@ -374,7 +374,7 @@ watch(
           </p>
         </div>
         <router-link :to="{ name: ROUTE_NAMES.MANAGE_DATABASE_CREATE }">
-          <Button class="flex items-center gap-2">
+          <Button class="flex items-center gap-2 cursor-pointer">
             <Plus class="h-4 w-4" />
             สร้าง Database ใหม่
           </Button>
@@ -396,7 +396,7 @@ watch(
                 @keyup.enter="handleSearch"
               />
             </div>
-            <Button @click="handleSearch" :disabled="isLoading">
+            <Button @click="handleSearch" :disabled="isLoading" class="cursor-pointer">
               <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin mr-2" />
               ค้นหา
             </Button>
@@ -567,21 +567,6 @@ watch(
                     </DropdownMenu>
                   </div>
 
-                  <!-- <div class="flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      class="text-destructive hover:text-destructive cursor-pointer bg-red-300"
-                      @click.stop="handleDeleteClick(source)"
-                      :disabled="isDeleting === source.id"
-                    >
-                      <Loader2
-                        v-if="isDeleting === source.id"
-                        class="h-4 w-4 animate-spin"
-                      />
-                      <Trash2 v-else class="h-4 w-4" />
-                    </Button>
-                  </div> -->
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -645,7 +630,7 @@ watch(
       v-model:open="showDeleteDialog"
       title="ยืนยันการลบ Database"
       :description="`คุณต้องการลบ database &quot;<strong>${databaseToDelete?.name}</strong>&quot; หรือไม่? <br /><br />การดำเนินการนี้ไม่สามารถยกเลิกได้ และข้อมูลจะถูกลบออกจากระบบถาวร`"
-      confirm-text="ลบ Database"
+      confirm-text="ลบ"
       cancel-text="ยกเลิก"
       variant="destructive"
       :is-loading="isDeleting !== null"

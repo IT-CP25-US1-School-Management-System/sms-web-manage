@@ -15,7 +15,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Home, Settings, User, Database, HardDrive,FileText } from "lucide-vue-next";
+import { Home, Settings, Users , User , Database, HardDrive,FileText, Cylinder, FileKey} from "lucide-vue-next";
 import AppSidebar from "@/layouts/AppSidebar.vue";
 import { useAuthStore } from "@/stores/auth";
 import ModeToggle from "@/components/ModeToggle.vue";
@@ -28,10 +28,12 @@ const breadcrumbConfig = {
   Settings: { label: "ตั้งค่าระบบ", icon: Settings },
   Profile: { label: "โปรไฟล์", icon: User },
   ManageDatabase: { label: "จัดการฐานข้อมูล", icon: Database },
-  ManageDatabaseWithID: { label: "รายละเอียดฐานข้อมูล", icon: Database },
+  ManageDatabaseWithID: { label: "รายละเอียดฐานข้อมูล", icon: Cylinder },
   Dataset: { label: "Dataset", icon: HardDrive },
   DatasetVersion: { label: "Dataset Version", icon: FileText },
   DatasetVersionServing: { label: "View Data", icon: Database },
+  Users: { label: "จัดการผู้ใช้งาน", icon: Users },
+  Roles: { label: "จัดการบทบาท", icon: FileKey },
 };
 
 const currentBreadcrumbs = computed(() => {
@@ -78,7 +80,15 @@ const currentBreadcrumbs = computed(() => {
       to: { name: ROUTE_NAMES.MANAGE_DATABASE },
       isLast: true,
     });
-  } else if (routeName === ROUTE_NAMES.DATASET || routeName === ROUTE_NAMES.DATASET_CREATE || routeName === ROUTE_NAMES.DATASET_EDIT) {
+    
+  }else if (routeName === ROUTE_NAMES.USERS) {
+    breadcrumbs.push({
+      label: breadcrumbConfig.Users.label,
+      icon: breadcrumbConfig.Users.icon,
+      to: { name: ROUTE_NAMES.USERS },
+      isLast: true,
+    });}
+     else if (routeName === ROUTE_NAMES.DATASET || routeName === ROUTE_NAMES.DATASET_CREATE || routeName === ROUTE_NAMES.DATASET_EDIT) {
     breadcrumbs.push({
       label: breadcrumbConfig.Dataset.label,
       icon: breadcrumbConfig.Dataset.icon,
@@ -150,6 +160,20 @@ const currentBreadcrumbs = computed(() => {
       label: breadcrumbConfig.ManageDatabaseWithID.label,
       icon: breadcrumbConfig.ManageDatabaseWithID.icon,
       to: { name: ROUTE_NAMES.MANAGE_DATABASE_WITH_ID, params: route.params },
+      isLast: true,
+    });
+  }
+  else if (routeName === ROUTE_NAMES.ROLES) {
+      breadcrumbs.push({
+      label: breadcrumbConfig.Users.label,
+      icon: breadcrumbConfig.Users.icon,
+      to: { name: ROUTE_NAMES.USERS },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: breadcrumbConfig.Roles.label,
+      icon: breadcrumbConfig.Roles.icon,
+      to: { name: ROUTE_NAMES.ROLES, params: route.params },
       isLast: true,
     });
   }

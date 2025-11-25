@@ -20,7 +20,7 @@ export interface DatabaseSearchParams {
   search_word?: string;
   source_id?: string;
   schema?: string;
-  table_name?: string;
+  table?: string;
   page?: number;
   per_page?: number;
 }

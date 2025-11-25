@@ -65,7 +65,7 @@ const handleCancel = () => {
           @click="handleConfirm"
           :disabled="isLoading"
           :class="{
-            'bg-destructive text-destructive-foreground hover:bg-destructive/90':
+            'bg-destructive text-destructive-foreground hover:bg-destructive/90 text-white':
               variant === 'destructive',
           }"
         >

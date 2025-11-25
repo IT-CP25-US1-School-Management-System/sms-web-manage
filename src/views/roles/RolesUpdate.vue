@@ -30,11 +30,9 @@ import { ROUTE_NAMES } from "@/lib/constants";
 // Reactive data
 const isLoading = ref(false);
 const isUpdating = ref(false);
-const showPassword = ref(false);
 const router = useRouter();
 const { showError, showSuccess } = useToast();
 const showSheet = ref(true);
-const showPasswordField = ref(false);
 
 // Form validation schema for role/Source
 const roleSchema = toTypedSchema(

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useToast } from "@/composables/useToast";
 import { useForm } from "vee-validate";
@@ -28,13 +28,10 @@ import { authApiInstance } from "@/stores/api";
 import { ROUTE_NAMES } from "@/lib/constants";
 
 // Reactive data
-const isLoading = ref(false);
 const isCreating = ref(false);
-const showPassword = ref(false);
 const router = useRouter();
 const { showError, showSuccess } = useToast();
 const showSheet = ref(true);
-const showPasswordField = ref(false);
 
 // Form validation schema for role/Source
 const roleSchema = toTypedSchema(
@@ -48,7 +45,7 @@ const roleSchema = toTypedSchema(
 );
 
 // Form setup
-const { handleSubmit, setValues } = useForm({
+const { handleSubmit } = useForm({
   validationSchema: roleSchema,
   initialValues: {
     name: "",

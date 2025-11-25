@@ -219,7 +219,7 @@ onMounted(() => {
       </div>
 
       <Card>
-        <CardTitle>รายละเอียดฐานข้อมูล</CardTitle>
+        <CardTitle class="text-lg font-semibold pl-4">รายละเอียดฐานข้อมูล</CardTitle>
         <CardContent>
           <div class="flex flex-col gap-2">
             <p>id : {{ database.id }}</p>

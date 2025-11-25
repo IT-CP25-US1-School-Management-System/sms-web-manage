@@ -30,14 +30,114 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/manage-database",
+      path: "/database",
       name: ROUTE_NAMES.MANAGE_DATABASE,
-      component: () => import("@/views/ManageDatabaseView.vue"),
+      component: () => import("@/views/introspection/ManageDatabaseView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "/database/create",
+          name: ROUTE_NAMES.MANAGE_DATABASE_CREATE,
+          component: () => import("@/views/introspection/ManageDatabaseCrate.vue"),
+          meta: { requiresAuth: true },
+        },
+          {
+          path: "/database/:id/edit",
+          name: ROUTE_NAMES.MANAGE_DATABASE_UPDATE,
+          component: () => import("@/views/introspection/ManageDatabaseUpdate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/database/:sourceId",
+      name: ROUTE_NAMES.MANAGE_DATABASE_WITH_ID,
+      component: () => import("@/views/introspection/DatabaseDetail.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/dataset",
+      name: ROUTE_NAMES.DATASET,
+      component: () => import("@/views/dataset/DatasetView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.DATASET_CREATE,
+          component: () => import("@/views/dataset/DatasetCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: ":id/edit",
+          name: ROUTE_NAMES.DATASET_EDIT,
+          component: () => import("@/views/dataset/DatasetEdit.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/dataset/:id/versions",
+      name: ROUTE_NAMES.DATASET_VERSION,
+      component: () => import("@/views/datasetVersion/DatasetVersionView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.DATASET_VERSION_CREATE,
+          component: () => import("@/views/datasetVersion/DatasetVersionCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/dataset/:id/versions/:version/serving",
+      name: ROUTE_NAMES.DATASET_VERSION_SERVING,
+      component: () => import("@/views/serving/DatasetVersionServingView.vue"),
       meta: { requiresAuth: true },
     },
     {
       path: "/:pathMatch(.*)*",
       redirect: { name: ROUTE_NAMES.HOME },
+    },
+    {
+      path: "/users",
+      name: ROUTE_NAMES.USERS,
+      component: () => import("@/views/users/UsersView.vue"),
+      meta: { requiresAuth: true },
+       children: [
+        {
+          path: "assign-roles",
+          name: ROUTE_NAMES.USERS_ASSIGN_ROLES,
+          component: () => import("@/views/users/AssignRoleModal.vue"),
+          meta: { requiresAuth: true },
+        },
+           {
+          path: "userdetail",
+          name: ROUTE_NAMES.USER_DETAIL,
+          component: () => import("@/views/users/UserDetail.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
+    },
+    {
+      path: "/roles-management",
+      name: ROUTE_NAMES.ROLES,
+      component: () => import("@/views/roles/RolesView.vue"),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: "create",
+          name: ROUTE_NAMES.ROLES_CREATE,
+          component: () => import("@/views/roles/RolesCreate.vue"),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: "update/:roleId",
+          name: ROUTE_NAMES.ROLES_UPDATE,
+          component: () => import("@/views/roles/RolesUpdate.vue"),
+          meta: { requiresAuth: true },
+        },
+      ],
     },
   ],
 });

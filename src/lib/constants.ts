@@ -8,5 +8,29 @@ export const ROUTE_NAMES = {
   HOME: "Home",
   PROFILE: "Profile",
   MANAGE_DATABASE: "ManageDatabase",
+  MANAGE_DATABASE_WITH_ID: "ManageDatabaseWithID",
+  MANAGE_DATABASE_CREATE: "ManageDatabaseCreate",
+  MANAGE_DATABASE_UPDATE: "ManageDatabaseUpdate",
+  DATASET: "Dataset",
+  DATASET_CREATE: "DatasetCreate",
+  DATASET_EDIT: "DatasetEdit",
+  DATASET_VERSION: "DatasetVersion",
+  DATASET_VERSION_CREATE: "DatasetVersionCreate",
+  DATASET_VERSION_SERVING: "DatasetVersionServing",
   INTROSPECTION: "Introspection",
+  USERS: "Users",
+  ROLES: "Roles",
+  USERS_ASSIGN_ROLES: "UsersAssignRoles",
+  ROLES_CREATE: "RolesCreate",
+  ROLES_UPDATE: "RolesUpdate",
+  USER_DETAIL: "UserDetail",
 } as const;
+
+export const DATASET_SENSITIVITY = {
+  PUBLIC: 'public',
+  INTERNAL: 'internal',
+  CONFIDENTIAL: 'confidential',
+  RESTRICTED: 'restricted'
+} as const;
+
+export type DatasetSensitivity = typeof DATASET_SENSITIVITY[keyof typeof DATASET_SENSITIVITY];

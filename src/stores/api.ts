@@ -107,7 +107,7 @@ dataApiInstance.interceptors.response.use(
  */
 export async function getAuthUrl(): Promise<AuthorizeResponse> {
   const response = await authApiInstance.post<AuthorizeResponse>(
-    "/v1/oauth2/authorize"
+    "/v1/oauth2/login"
   );
   return response.data;
 }

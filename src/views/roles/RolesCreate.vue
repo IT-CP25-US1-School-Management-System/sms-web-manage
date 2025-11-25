@@ -53,8 +53,6 @@ const { handleSubmit } = useForm({
   },
 });
 
-// Store role ID separately (not part of form validation)
-const roleName = ref<string>("");
 
 // API function to update a role/source
 const createrole = async (data: CreateRolesRequest) => {

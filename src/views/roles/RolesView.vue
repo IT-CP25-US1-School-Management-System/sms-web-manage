@@ -103,6 +103,9 @@ const loadRoles = async (params?: RolesSearchParams) => {
       per_page: paginationData.value.per_page,
       ...params,
     };
+    if (searchQuery.value.trim()) {
+      searchParams.search_word = searchQuery.value.trim();
+    }
 
     const response: RolesSearchResponse = await getRoles(searchParams);
 
@@ -327,10 +330,6 @@ watch(
                   : "ยังไม่มี roles ในระบบ"
               }}
             </p>
-            <Button variant="outline">
-              <Plus class="h-4 w-4 mr-2" />
-              สร้าง role แรก
-            </Button>
           </div>
 
           <!-- Data table -->

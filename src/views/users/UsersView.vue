@@ -41,7 +41,6 @@ import {
   FileText,
   Loader2,
   AlertCircle,
-  Plus,
   Edit,
 } from "lucide-vue-next";
 
@@ -378,10 +377,6 @@ watch(
                   : "ยังไม่มี users ในระบบ"
               }}
             </p>
-            <Button variant="outline">
-              <Plus class="h-4 w-4 mr-2" />
-              สร้าง users แรก
-            </Button>
           </div>
 
           <!-- Data table -->

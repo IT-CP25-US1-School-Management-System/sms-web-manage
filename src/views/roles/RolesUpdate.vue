@@ -161,9 +161,10 @@ onMounted(() => {
       class="sm:max-w-md max-w-sm p-0 overflow-hidden flex flex-col"
     >
       <SheetHeader class="px-6 pt-6">
-        <SheetTitle>แก้ไข Role</SheetTitle>
+        <SheetTitle>แก้ไข {{ roleName }}</SheetTitle>
         <SheetDescription>
-          แก้ไขข้อมูล role {{ roleName }} ในระบบ
+          แก้ไขข้อมูลของ
+          <span class="font-bold"> {{ roleName }} </span> ในระบบ
         </SheetDescription>
       </SheetHeader>
       <div class="flex-1 overflow-y-auto px-6 py-6">
@@ -173,7 +174,9 @@ onMounted(() => {
           <!-- Description -->
           <FormField v-slot="{ componentField }" name="description">
             <FormItem>
-              <FormLabel>คำอธิบาย *</FormLabel>
+              <FormLabel
+                >คำอธิบาย <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input
                   v-bind="componentField"

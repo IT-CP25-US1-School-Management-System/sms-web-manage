@@ -244,7 +244,7 @@ onMounted(() => {
         >
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
-              <FormLabel>ชื่อ Database *</FormLabel>
+              <FormLabel>ชื่อ Database <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -258,7 +258,7 @@ onMounted(() => {
           <!-- Description -->
           <FormField v-slot="{ componentField }" name="description">
             <FormItem>
-              <FormLabel>คำอธิบาย *</FormLabel>
+              <FormLabel>คำอธิบาย <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -272,7 +272,7 @@ onMounted(() => {
           <!-- Type -->
           <FormField v-slot="{ componentField }" name="type">
             <FormItem>
-              <FormLabel>Type *</FormLabel>
+              <FormLabel>Type <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น jdbc" />
               </FormControl>
@@ -283,7 +283,7 @@ onMounted(() => {
           <!-- Is Active -->
           <FormField v-slot="{ value, handleChange }" name="is_active">
             <FormItem>
-              <FormLabel>Active Status *</FormLabel>
+              <FormLabel>Active Status <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <div class="flex gap-4">
                   <label class="flex items-center gap-2 cursor-pointer">
@@ -315,7 +315,7 @@ onMounted(() => {
           <!-- Database Type -->
           <FormField v-slot="{ componentField }" name="db_type">
             <FormItem>
-              <FormLabel>Database Type *</FormLabel>
+              <FormLabel>Database Type <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น postgres" />
               </FormControl>
@@ -326,7 +326,7 @@ onMounted(() => {
           <!-- Host -->
           <FormField v-slot="{ componentField }" name="host">
             <FormItem>
-              <FormLabel>Host *</FormLabel>
+              <FormLabel>Host <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -340,7 +340,7 @@ onMounted(() => {
           <!-- Port -->
           <FormField v-slot="{ componentField }" name="port">
             <FormItem>
-              <FormLabel>Port *</FormLabel>
+              <FormLabel>Port <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -355,7 +355,7 @@ onMounted(() => {
           <!-- Sensitivity -->
           <FormField v-slot="{ componentField }" name="sensitivity">
             <FormItem>
-              <FormLabel>Sensitivity Level *</FormLabel>
+              <FormLabel>Sensitivity Level <span class="text-destructive">*</span></FormLabel>
               <Select v-bind="componentField">
                 <FormControl>
                   <SelectTrigger>
@@ -384,7 +384,7 @@ onMounted(() => {
           <!-- Username -->
           <FormField v-slot="{ componentField }" name="username">
             <FormItem>
-              <FormLabel>Username *</FormLabel>
+              <FormLabel>Username <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น root" />
               </FormControl>
@@ -417,7 +417,7 @@ onMounted(() => {
             v-if="showPasswordField"
           >
             <FormItem>
-              <FormLabel>New Password *</FormLabel>
+              <FormLabel>New Password <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <div class="relative">
                   <Input
@@ -448,7 +448,7 @@ onMounted(() => {
           <!-- Database Name -->
           <FormField v-slot="{ componentField }" name="database_name">
             <FormItem>
-              <FormLabel>Database Name *</FormLabel>
+              <FormLabel>Database Name <span class="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น dms_data" />
               </FormControl>

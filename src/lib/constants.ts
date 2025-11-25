@@ -23,6 +23,7 @@ export const ROUTE_NAMES = {
   USERS_ASSIGN_ROLES: "UsersAssignRoles",
   ROLES_CREATE: "RolesCreate",
   ROLES_UPDATE: "RolesUpdate",
+  USER_DETAIL: "UserDetail",
 } as const;
 
 export const DATASET_SENSITIVITY = {

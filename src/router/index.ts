@@ -111,6 +111,12 @@ const router = createRouter({
           component: () => import("@/views/users/AssignRoleModal.vue"),
           meta: { requiresAuth: true },
         },
+           {
+          path: "userdetail",
+          name: ROUTE_NAMES.USER_DETAIL,
+          component: () => import("@/views/users/UserDetail.vue"),
+          meta: { requiresAuth: true },
+        },
       ],
     },
     {
@@ -125,7 +131,7 @@ const router = createRouter({
           component: () => import("@/views/roles/RolesCreate.vue"),
           meta: { requiresAuth: true },
         },
-          {
+        {
           path: "update/:roleId",
           name: ROUTE_NAMES.ROLES_UPDATE,
           component: () => import("@/views/roles/RolesUpdate.vue"),

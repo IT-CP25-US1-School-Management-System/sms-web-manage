@@ -33,6 +33,7 @@ const breadcrumbConfig = {
   DatasetVersion: { label: "Dataset Version", icon: FileText },
   DatasetVersionServing: { label: "View Data", icon: Database },
   Users: { label: "จัดการผู้ใช้งาน", icon: Users },
+  UserDetail: { label: "รายละเอียดผู้ใช้งาน", icon: User },
   Roles: { label: "จัดการบทบาท", icon: FileKey },
 };
 
@@ -177,6 +178,21 @@ const currentBreadcrumbs = computed(() => {
       isLast: true,
     });
   }
+    else if (routeName === ROUTE_NAMES.USER_DETAIL) {
+      breadcrumbs.push({
+      label: breadcrumbConfig.Users.label,
+      icon: breadcrumbConfig.Users.icon,
+      to: { name: ROUTE_NAMES.USERS },
+      isLast: false,
+    });
+    breadcrumbs.push({
+      label: breadcrumbConfig.UserDetail.label,
+      icon: breadcrumbConfig.UserDetail.icon,
+      to: { name: ROUTE_NAMES.USER_DETAIL },
+      isLast: true,
+    });
+  }
+  
   
   else {
     breadcrumbs.push({

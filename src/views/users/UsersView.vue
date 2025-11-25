@@ -207,14 +207,18 @@ const assignRole = async (user: Users) => {
 
   // await loadAvailableRoles();
   showAssignRoleDialog.value = true;
-  router.push({
-    name: ROUTE_NAMES.USERS_ASSIGN_ROLES,
-  });
 };
 
 const handleAssignRoleCancel = () => {
   showAssignRoleDialog.value = false;
   selectedUser.value = null; // Clear เมื่อ cancel
+};
+
+const viewUserDetail = (user: Users) => {
+  router.push({
+    name: ROUTE_NAMES.USER_DETAIL,
+    state: { user: JSON.parse(JSON.stringify(user)) }, // แปลงเป็น plain object
+  });
 };
 
 const goToPage = (page: number) => {
@@ -275,11 +279,11 @@ watch(
 
 <template>
   <MainLayout>
-    <div class="flex-1 space-y-6 p-6">
+    <div v-if="route.name === ROUTE_NAMES.USERS" class="flex-1 space-y-6 p-6">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">users</h1>
+          <h1 class="text-3xl font-bold tracking-tight">Users</h1>
           <p class="text-muted-foreground mt-2">
             จัดการสิทธิ์และดูข้อมูลผู้ใช้งานต่าง ๆ
           </p>
@@ -394,7 +398,8 @@ watch(
               <TableRow
                 v-for="user in users"
                 :key="user.keycloak_id"
-                class="hover:bg-accent/50"
+                class="hover:bg-accent/50 cursor-pointer"
+                @click="viewUserDetail(user)"
               >
                 <TableCell class="w-80">
                   <div class="flex items-center gap-2">
@@ -513,9 +518,10 @@ watch(
       @confirm="handleAssignRoleConfirm"
       @cancel="handleAssignRoleCancel"
     />
-  </MainLayout>
 
-  <RouterView />
+    <!-- Child Routes -->
+    <RouterView />
+  </MainLayout>
 </template>
 
 <style scoped></style>

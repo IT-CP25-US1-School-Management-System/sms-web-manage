@@ -21,7 +21,7 @@ import { useToast } from "@/composables/useToast";
 
 interface Props {
   open: boolean;
-  user: Users | null;
+  user?: Users | null;
   isLoading?: boolean;
 }
 
@@ -32,6 +32,7 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  user: null,
   isLoading: false,
 });
 
@@ -184,6 +185,7 @@ onMounted(() => {
             <div
               v-for="role in currentRoles"
               :key="role.id"
+              @click="markForRemoval(role.id)"
               class="flex items-center justify-between p-3 rounded-md border bg-card hover:bg-accent/50"
             >
               <div class="flex-1">
@@ -198,8 +200,7 @@ onMounted(() => {
               <Button
                 variant="ghost"
                 size="sm"
-                @click="markForRemoval(role.id)"
-                class="ml-2"
+                class="ml-2 cursor-pointer"
               >
                 <X class="h-4 w-4" />
               </Button>
@@ -215,7 +216,7 @@ onMounted(() => {
             <h3
               class="text-sm font-semibold text-green-600 dark:text-green-400"
             >
-            เพิ่ม Roles
+            รายการ Role ที่จะถูกเพิ่ม
             </h3>
             <!-- <Badge variant="default" class="bg-green-600"
               >+{{ newRoles.length }}</Badge
@@ -225,6 +226,7 @@ onMounted(() => {
             <div
               v-for="role in newRoles"
               :key="role.id"
+              @click="removeAddedRole(role.id)"
               class="flex items-center justify-between p-3 rounded-md border border-green-500 bg-green-50 dark:bg-green-950/20"
             >
               <div class="flex-1">
@@ -239,8 +241,7 @@ onMounted(() => {
               <Button
                 variant="ghost"
                 size="sm"
-                @click="removeAddedRole(role.id)"
-                class="ml-2"
+                class="ml-2 cursor-pointer"
               >
                 <X class="h-4 w-4" />
               </Button>
@@ -253,7 +254,7 @@ onMounted(() => {
         <div v-if="removeRoleIds.length > 0">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-semibold text-red-600 dark:text-red-400">
-              ลบ Roles
+              รายการ Role ที่จะถูกนำออก
             </h3>
             <!-- <Badge variant="destructive">-{{ removeRoleIds.length }}</Badge> -->
           </div>
@@ -261,6 +262,7 @@ onMounted(() => {
             <div
               v-for="roleId in removeRoleIds"
               :key="roleId"
+              @click="undoRemoval(roleId)"
               class="flex items-center justify-between p-3 rounded-md border border-red-500 bg-red-50 dark:bg-red-950/20"
             >
               <div class="flex-1">
@@ -280,8 +282,8 @@ onMounted(() => {
               <Button
                 variant="ghost"
                 size="sm"
-                @click="undoRemoval(roleId)"
-                class="ml-2"
+                
+                class="ml-2 cursor-pointer"
               >
                 <X class="h-4 w-4" />
               </Button>
@@ -320,7 +322,7 @@ onMounted(() => {
                   {{ role.description }}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" class="ml-2">
+              <Button variant="ghost" size="sm" class="ml-2 cursor-pointer  ">
                 <Plus class="h-4 w-4" />
               </Button>
             </div>

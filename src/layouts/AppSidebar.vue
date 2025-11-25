@@ -84,7 +84,7 @@ const menuConfig: {
     },
     {
       id: "dataset",
-      label: "Dataset",
+      label: "ชุดข้อมูล",
       icon: HardDrive,
       routeName: ROUTE_NAMES.DATASET,
       children: null,

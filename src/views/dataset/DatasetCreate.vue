@@ -56,7 +56,7 @@ const closeSheet = () => {
 
 // Form validation schema
 const datasetSchema = toTypedSchema(z.object({
-  id: z.string().min(1, 'กรุณาระบุ Dataset ID').max(50, 'Dataset ID ต้องไม่เกิน 50 ตัวอักษร').regex(/^[a-z0-9_]+$/, 'Dataset ID ต้องใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น'),
+  id: z.string().min(1, 'กรุณาระบุ Dataset ID').max(50, 'Dataset ID ต้องไม่เกิน 50 ตัวอักษร').regex(/^[a-z_][a-z0-9_]*$/, 'Dataset ID ต้องขึ้นต้นด้วยตัวอักษรเล็กหรือ _ และใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น'),
   name: z.string().min(1, 'กรุณาระบุชื่อ Dataset').max(100, 'ชื่อ Dataset ต้องไม่เกิน 100 ตัวอักษร'),
   description: z.string().min(1, 'กรุณาระบุคำอธิบาย Dataset').max(500, 'คำอธิบายต้องไม่เกิน 500 ตัวอักษร'),
   domain: z.string().min(1, 'กรุณาระบุ Domain').max(50, 'Domain ต้องไม่เกิน 50 ตัวอักษร'),
@@ -153,7 +153,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
               />
             </FormControl>
             <FormDescription>
-              ใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น
+              ต้องขึ้นต้นด้วยตัวอักษรเล็กหรือ _ และใช้ตัวอักษรเล็ก ตัวเลข และ _ เท่านั้น
             </FormDescription>
             <FormMessage />
           </FormItem>

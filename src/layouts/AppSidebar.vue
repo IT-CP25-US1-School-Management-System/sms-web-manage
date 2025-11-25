@@ -37,8 +37,7 @@ import {
   Database,
   ChevronRight,
   HardDrive,
-  FileKey,
-  Users
+  Users,
 } from "lucide-vue-next";
 
 import { getImgInitials } from "@/lib/helpers";

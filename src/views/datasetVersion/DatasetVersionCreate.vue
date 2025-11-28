@@ -1226,24 +1226,28 @@ onMounted(() => {
 
             <div class="border rounded-lg p-4 space-y-4 bg-muted/20">
               <h3 class="font-semibold text-sm">สร้าง Policy ใหม่</h3>
-              
-              <div class="grid grid-cols-2 gap-3">
-                <div class="space-y-2">
-                  <Label>Role <span class="text-red-500">*</span></Label>
-                  <Input v-model="newPolicy.role" placeholder="admin, user, guest" />
-                </div>
-                <div class="space-y-2">
-                  <Label>Scope</Label>
-                  <Select v-model="newPolicy.scope">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">ทั้งหมด (All)</SelectItem>
-                      <SelectItem value="own">ของตัวเอง (Own)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                            <div class="space-y-2">
+                <Label>Role <span class="text-red-500">*</span></Label>
+                <Select v-model="newPolicy.role">
+                  <SelectTrigger :disabled="isLoadingRoles">
+                    <SelectValue placeholder="เลือก Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div v-if="isLoadingRoles" class="flex items-center justify-center py-2">
+                      <Loader2 class="h-4 w-4 animate-spin" />
+                      <span class="ml-2 text-sm text-muted-foreground">กำลังโหลด...</span>
+                    </div>
+                    <SelectItem 
+                      v-else 
+                      v-for="role in roles" 
+                      :key="role.id" 
+                      :value="role.name"
+                      class="cursor-pointer"
+                    >
+                      {{ role.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div class="space-y-3">

@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Database, Search, FileJson } from 'lucide-vue-next'
+import { ArrowLeft, Database, Search, FileJson, AlertCircle } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import { dataApiInstance } from '@/stores/api'
 
@@ -31,6 +31,8 @@ const data = ref<any[]>([])
 const isLoadingData = ref(false)
 const selectedView = ref('')
 const searchKey = ref('')
+const versionError = ref<string | null>(null)
+const dataError = ref<string | null>(null)
 
 // Pagination
 const currentPage = ref(1)
@@ -52,8 +54,15 @@ const loadVersion = async () => {
     if (versionData.value?.policies?.runtime?.default_view) {
       selectedView.value = versionData.value.policies.runtime.default_view
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to load version:', error)
+    if (error.response?.status === 403) {
+      versionError.value = 'ไม่มีสิทธิ์ในการเข้าถึง Dataset Version นี้'
+    } else if (error.response?.status === 404) {
+      versionError.value = 'ไม่พบ Dataset Version ที่ระบุ'
+    } else {
+      versionError.value = error.response?.data?.message || 'ไม่สามารถโหลดข้อมูล Version ได้'
+    }
   } finally {
     isLoadingVersion.value = false
   }
@@ -62,6 +71,7 @@ const loadVersion = async () => {
 const loadData = async () => {
   if (!selectedView.value) return
   
+  dataError.value = null // Clear previous errors
   try {
     isLoadingData.value = true
     const params: any = {
@@ -79,8 +89,16 @@ const loadData = async () => {
     currentPage.value = response.data.page
     totalPages.value = response.data.total_pages
     totalRows.value = response.data.total_rows
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to load data:', error)
+    if (error.response?.status === 403) {
+      dataError.value = 'ไม่มีสิทธิ์ในการดึงข้อมูลจาก View นี้'
+    } else if (error.response?.status === 404) {
+      dataError.value = 'ไม่พบข้อมูลใน View ที่ระบุ'
+    } else {
+      dataError.value = error.response?.data?.message || 'ไม่สามารถดึงข้อมูลได้'
+    }
+    data.value = []
   } finally {
     isLoadingData.value = false
   }
@@ -89,6 +107,7 @@ const loadData = async () => {
 const searchByKey = async () => {
   if (!searchKey.value.trim()) return
   
+  dataError.value = null // Clear previous errors
   try {
     isLoadingData.value = true
     const params: any = {}
@@ -105,8 +124,15 @@ const searchByKey = async () => {
     totalRows.value = 1
     totalPages.value = 1
     currentPage.value = 1
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to search by key:', error)
+    if (error.response?.status === 403) {
+      dataError.value = 'ไม่มีสิทธิ์ในการค้นหาข้อมูล'
+    } else if (error.response?.status === 404) {
+      dataError.value = 'ไม่พบข้อมูลที่ค้นหา'
+    } else {
+      dataError.value = error.response?.data?.message || 'ไม่สามารถค้นหาข้อมูลได้'
+    }
     data.value = []
   } finally {
     isLoadingData.value = false
@@ -200,7 +226,19 @@ onMounted(async () => {
             </div>
           </div>
         </CardHeader>
-        <CardContent v-if="!isLoadingVersion && versionData">
+        
+        <!-- Version Error -->
+        <CardContent v-if="versionError" class="border-t">
+          <div class="flex items-center justify-center py-8 text-center">
+            <div class="space-y-3">
+              <AlertCircle class="h-12 w-12 text-destructive mx-auto" />
+              <h3 class="text-lg font-semibold text-destructive">ไม่สามารถโหลดข้อมูล Version ได้</h3>
+              <p class="text-muted-foreground max-w-md">{{ versionError }}</p>
+            </div>
+          </div>
+        </CardContent>
+        
+        <CardContent v-else-if="!isLoadingVersion && versionData">
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <div class="text-sm text-muted-foreground">Status</div>
@@ -270,6 +308,18 @@ onMounted(async () => {
 
           <div v-if="!selectedView" class="text-center py-8 text-muted-foreground">
             Please select a view to query data
+          </div>
+          
+          <!-- Data Error -->
+          <div v-else-if="dataError" class="flex items-center justify-center py-8 text-center">
+            <div class="space-y-3">
+              <AlertCircle class="h-10 w-10 text-destructive mx-auto" />
+              <h3 class="text-lg font-semibold text-destructive">เกิดข้อผิดพลาด</h3>
+              <p class="text-muted-foreground max-w-md">{{ dataError }}</p>
+              <Button @click="loadData()" variant="outline" size="sm" class="cursor-pointer">
+                ลองใหม่
+              </Button>
+            </div>
           </div>
 
           <!-- Data Table -->

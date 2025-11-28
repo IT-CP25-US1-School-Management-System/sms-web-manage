@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onActivated } from 'vue'
+import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -180,6 +180,19 @@ onMounted(() => {
 onActivated(() => {
   loadVersions()
 })
+
+// Watch for refresh query parameter to reload data after creating new version
+watch(() => route.query.refresh, (newRefresh) => {
+  if (newRefresh === 'true') {
+    loadVersions()
+    // Clear the refresh parameter from URL without navigation
+    router.replace({ 
+      name: route.name, 
+      params: route.params,
+      query: { ...route.query, refresh: undefined }
+    })
+  }
+})
 </script>
 
 <template>
@@ -187,7 +200,7 @@ onActivated(() => {
     <div class="flex-1 space-y-6">
       <!-- Header -->
       <div class="flex items-center gap-4">
-        <Button variant="ghost" size="sm" @click="goBack" class="flex items-center gap-2">
+        <Button variant="ghost" size="sm" @click="goBack" class="flex items-center gap-2 cursor-pointer">
           <ArrowLeft class="h-4 w-4" />
           ย้อนกลับ
         </Button>
@@ -288,7 +301,7 @@ onActivated(() => {
                 รายการ versions ทั้งหมดของ dataset นี้
               </CardDescription>
             </div>
-            <Button size="sm" class="flex items-center gap-2" @click="router.push({ name: ROUTE_NAMES.DATASET_VERSION_CREATE, params: { id: datasetId } })">
+            <Button size="sm" class="flex items-center gap-2 cursor-pointer" @click="router.push({ name: ROUTE_NAMES.DATASET_VERSION_CREATE, params: { id: datasetId } })">
               <Plus class="h-4 w-4" />
               สร้าง Version
             </Button>
@@ -307,7 +320,7 @@ onActivated(() => {
             <TableHeader>
               <TableRow>
                 <TableHead>Version</TableHead>
-                <TableHead>Source ID</TableHead>
+                <TableHead>Database ID</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>Updated At</TableHead>
@@ -340,7 +353,7 @@ onActivated(() => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          class="h-8 w-8 p-0"
+                          class="h-8 w-8 p-0 cursor-pointer"
                           :disabled="isChangingStatus"
                         >
                           <Loader2 v-if="isChangingStatus" class="h-4 w-4 animate-spin" />
@@ -348,13 +361,13 @@ onActivated(() => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem @click="openDetail(version)">
+                        <DropdownMenuItem @click="openDetail(version)" class="cursor-pointer">
                           <Eye class="h-4 w-4 mr-2" />
                           Detail
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           @click="handleStatusChangeClick(version)"
-                          :class="version.status === 'deprecated' ? 'text-green-600 focus:text-green-600' : 'text-destructive focus:text-destructive'">
+                          :class="version.status === 'deprecated' ? 'text-green-600 focus:text-green-600 cursor-pointer' : 'text-destructive focus:text-destructive cursor-pointer'">
                           <CheckCircle v-if="version.status === 'deprecated'" class="h-4 w-4 mr-2" />
                           <XCircle v-else class="h-4 w-4 mr-2" />
                           {{ version.status === 'deprecated' ? 'Activate' : 'Deprecated' }}
@@ -431,7 +444,7 @@ onActivated(() => {
                 </Badge>
               </div>
               <div class="col-span-2">
-                <div class="text-sm text-muted-foreground">Source ID</div>
+                <div class="text-sm text-muted-foreground">Database ID</div>
                 <code class="text-xs bg-muted px-2 py-1 rounded">{{ selectedVersion.source_id }}</code>
               </div>
             </div>

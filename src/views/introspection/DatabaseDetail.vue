@@ -228,7 +228,7 @@ onMounted(() => {
             <p>type : {{ database.type }}</p>
             <p>is active : {{ database.is_active }}</p>
             <p>sensitivity : {{ database.sensitivity }}</p>
-            <p>db type : {{ database.db_type }}</p>
+            <p>db product : {{ database.db_type }}</p>
             <p>host : {{ database.host }}</p>
             <p>port : {{ database.port }}</p>
             <p>username : {{ database.username }}</p>

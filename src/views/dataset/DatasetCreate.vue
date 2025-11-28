@@ -228,7 +228,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
               @keyup.enter.prevent="addTag"
               class="flex-1"
             />
-            <Button @click="addTag" variant="outline" size="sm" type="button">
+            <Button @click="addTag" variant="outline" size="sm" type="button" class="cursor-pointer">
               เพิ่ม
             </Button>
           </div>
@@ -240,7 +240,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
               class="flex items-center gap-1"
             >
               {{ tag }}
-              <button @click="removeTag(tag)" class="ml-1 hover:text-destructive" type="button">
+              <button @click="removeTag(tag)" class="ml-1 hover:text-destructive cursor-pointer" type="button">
                 <X class="h-3 w-3" />
               </button>
             </Badge>
@@ -252,16 +252,16 @@ const handleCreateDataset = handleSubmit(async (formData) => {
           <FormItem>
             <FormLabel>Sensitivity Level</FormLabel>
             <Select v-bind="componentField">
-              <FormControl>
+              <FormControl class="cursor-pointer">
                 <SelectTrigger>
                   <SelectValue placeholder="เลือก Sensitivity Level" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem :value="DATASET_SENSITIVITY.PUBLIC">สาธารณะ (Public)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.INTERNAL">ภายใน (Internal)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.CONFIDENTIAL">ความลับ (Confidential)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.RESTRICTED">จำกัด (Restricted)</SelectItem>
+                <SelectItem :value="DATASET_SENSITIVITY.PUBLIC" class="cursor-pointer">สาธารณะ (Public)</SelectItem>
+                <SelectItem :value="DATASET_SENSITIVITY.INTERNAL" class="cursor-pointer">ภายใน (Internal)</SelectItem>
+                <SelectItem :value="DATASET_SENSITIVITY.CONFIDENTIAL" class="cursor-pointer">ความลับ (Confidential)</SelectItem>
+                <SelectItem :value="DATASET_SENSITIVITY.RESTRICTED" class="cursor-pointer">จำกัด (Restricted)</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />
@@ -295,10 +295,11 @@ const handleCreateDataset = handleSubmit(async (formData) => {
             variant="outline"
             @click="closeSheet"
             :disabled="isCreating"
+            class="cursor-pointer"
           >
             ยกเลิก
           </Button>
-          <Button type="submit" :disabled="isCreating">
+          <Button type="submit" :disabled="isCreating" class="cursor-pointer">
             <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
             สร้าง Dataset
           </Button>

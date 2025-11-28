@@ -5,8 +5,9 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
 import { useToast } from '@/composables/useToast'
-import { dataApiInstance } from '@/stores/api'
+import { dataApiInstance, authApiInstance } from '@/stores/api'
 import { ROUTE_NAMES } from '@/lib/constants'
+import type { Roles, RolesSearchResponse } from '@/types/roles'
 
 import {
   Sheet,
@@ -63,13 +64,15 @@ const isLoadingColumns = ref(false)
 const selectedSchema = ref('')
 const selectedTable = ref('')
 const currentStep = ref(1)
+const roles = ref<Roles[]>([])
+const isLoadingRoles = ref(false)
 
 // Zod schemas for each step
 const step1Schema = z.object({
   version: z.string()
     .min(1, 'กรุณากรอก Version')
     .regex(/^v\d+\.\d+\.\d+$/, 'รูปแบบ Version ต้องเป็น v{major}.{minor}.{patch} เช่น v1.0.0, v2.1.3'),
-  source_id: z.string().uuid('กรุณาเลือก Source'),
+  source_id: z.string().uuid('กรุณาเลือก Database'),
   status: z.enum(['active', 'preview', 'deprecated'])
 })
 
@@ -89,7 +92,7 @@ const step2Schema = z.object({
 const step3Schema = z.object({
   access_policies: z.array(z.object({
     role: z.string().min(1, 'กรุณากรอก Role'),
-    scope: z.string().min(1, 'กรุณากรอก Scope'),
+    scope: z.string().default('all'),
     can_view: z.boolean(),
     can_edit: z.boolean(),
     can_delete: z.boolean(),
@@ -110,7 +113,7 @@ const fullSchema = z.object({
   version: z.string()
     .min(1, 'กรุณากรอก Version')
     .regex(/^v\d+\.\d+\.\d+$/, 'รูปแบบ Version ต้องเป็น v{major}.{minor}.{patch} เช่น v1.0.0, v2.1.3'),
-  source_id: z.string().uuid('กรุณาเลือก Source'),
+  source_id: z.string().uuid('กรุณาเลือก Database'),
   status: z.enum(['active', 'preview', 'deprecated']),
   schema: z.object({
     columns: z.array(z.object({
@@ -124,7 +127,7 @@ const fullSchema = z.object({
   }),
   access_policies: z.array(z.object({
     role: z.string().min(1, 'กรุณากรอก Role'),
-    scope: z.string().min(1, 'กรุณากรอก Scope'),
+    scope: z.string().default('all'),
     can_view: z.boolean(),
     can_edit: z.boolean(),
     can_delete: z.boolean(),
@@ -196,7 +199,7 @@ const { validate, setFieldValue, values } = useForm({
 const formData = computed(() => values)
 
 // Temporary fields for adding items
-const newPolicy = ref({ role: 'admin', scope: 'all', can_view: true, can_edit: false, can_delete: false, allow_view: [] as string[] })
+const newPolicy = ref({ role: '', scope: 'all', can_view: true, can_edit: false, can_delete: false, allow_view: [] as string[] })
 const newViewName = ref('')
 // แต่ละ view มี state แยกกัน - ใช้ Record<viewName, tableData>
 const viewTableSelections = ref<Record<string, { table_name: string; columns: string[] }>>({})
@@ -210,7 +213,7 @@ const newJoin = ref({
 })
 
 const steps = [
-  { id: 1, title: 'ข้อมูลพื้นฐาน', description: 'Version, Source, Status' },
+  { id: 1, title: 'ข้อมูลพื้นฐาน', description: 'Version, Database, Status' },
   { id: 2, title: 'Schema', description: 'Columns และ Types' },
   { id: 3, title: 'Views', description: 'กำหนด Views' },
   { id: 4, title: 'Access Policies', description: 'สิทธิ์การเข้าถึง' },
@@ -227,8 +230,9 @@ const canGoNext = computed(() => {
     return result.success
   }
   if (currentStep.value === 3) {
-    // Step 3: Views - ไม่บังคับ
-    return true
+    // Step 3: Views - ต้องมีอย่างน้อย 1 view
+    const viewsCount = Object.keys(values.policies?.views || {}).length
+    return viewsCount > 0
   }
   if (currentStep.value === 4) {
     const result = step3Schema.safeParse({ access_policies: values.access_policies })
@@ -241,12 +245,7 @@ const canGoNext = computed(() => {
   return true
 })
 
-const closeSheet = () => {
-  isOpen.value = false
-  setTimeout(() => {
-    router.push({ name: ROUTE_NAMES.DATASET_VERSION, params: { id: datasetId.value } })
-  }, 300)
-}
+
 
 const loadSources = async () => {
   try {
@@ -259,8 +258,8 @@ const loadSources = async () => {
       name: source.name,
     }))
   } catch (error) {
-    console.error('Failed to load sources:', error)
-    showError('ไม่สามารถโหลดข้อมูล Source ได้', {
+    console.error('Failed to load databases:', error)
+    showError('ไม่สามารถโหลดข้อมูล Database ได้', {
       description: 'กรุณาลองใหม่อีกครั้ง',
     })
   } finally {
@@ -324,6 +323,23 @@ const loadColumns = async () => {
     showError('ไม่สามารถโหลดข้อมูล Column ได้')
   } finally {
     isLoadingColumns.value = false
+  }
+}
+
+const loadRoles = async () => {
+  try {
+    isLoadingRoles.value = true
+    const response = await authApiInstance.get<RolesSearchResponse>('/v1/auth/roles', {
+      params: { per_page: 100, page: 1 }
+    })
+    roles.value = response.data.data
+  } catch (error) {
+    console.error('Failed to load roles:', error)
+    showError('ไม่สามารถโหลดข้อมูล Role ได้', {
+      description: 'กรุณาลองใหม่อีกครั้ง'
+    })
+  } finally {
+    isLoadingRoles.value = false
   }
 }
 
@@ -426,7 +442,7 @@ const addPolicy = () => {
   if (newPolicy.value.role && newPolicy.value.allow_view.length > 0) {
     const currentPolicies = values.access_policies || []
     
-    // ตรวจสอบว่ามี role + scope + view ซ้ำกันหรือไม่ (ไม่ว่า permissions จะเหมือนหรือไม่)
+    // ตรวจสอบว่ามี role + view ซ้ำกันหรือไม่ (ไม่ว่า permissions จะเหมือนหรือไม่)
     const duplicateViews: string[] = []
     newPolicy.value.allow_view.forEach(view => {
       const isDuplicate = currentPolicies.some((p: any) => 
@@ -442,12 +458,12 @@ const addPolicy = () => {
     // ถ้ามี view ซ้ำ แสดง error และหยุดการทำงาน
     if (duplicateViews.length > 0) {
       showError('ไม่สามารถเพิ่ม Policy ได้', {
-        description: `มีการกำหนด Role "${newPolicy.value.role}" + Scope "${newPolicy.value.scope}" สำหรับ View: ${duplicateViews.join(', ')} อยู่แล้ว กรุณาเลือก View อื่นหรือแก้ไข Policy ที่มีอยู่`
+        description: `มีการกำหนด Role "${newPolicy.value.role}" สำหรับ View: ${duplicateViews.join(', ')} อยู่แล้ว กรุณาเลือก View อื่นหรือแก้ไข Policy ที่มีอยู่`
       })
       return
     }
     
-    // หา policy ที่มี role + permissions + scope เหมือนกันทุกอย่าง
+    // หา policy ที่มี role + permissions เหมือนกันทุกอย่าง
     const existingPolicyIndex = currentPolicies.findIndex(
       (p: any) => 
         p.role === newPolicy.value.role && 
@@ -458,7 +474,7 @@ const addPolicy = () => {
     )
     
     if (existingPolicyIndex > -1) {
-      // ถ้ามี policy ที่ role + permissions + scope เหมือนกันทุกอย่าง ให้รวม tables
+      // ถ้ามี policy ที่ role + permissions เหมือนกันทุกอย่าง ให้รวม tables
       const existingPolicy = currentPolicies[existingPolicyIndex]!
       const mergedTables = [...new Set([...existingPolicy.allow_view, ...newPolicy.value.allow_view])]
       
@@ -490,7 +506,7 @@ const addPolicy = () => {
     // Reset form ใช้ nextTick เพื่อให้ Vue update DOM ก่อน
     nextTick(() => {
       newPolicy.value = {
-        role: 'admin',
+        role: '',
         scope: 'all',
         can_view: true,
         can_edit: false,
@@ -526,7 +542,7 @@ const isViewSelected = (viewName: string): boolean => {
   return newPolicy.value.allow_view.includes(viewName)
 }
 
-// ตรวจสอบว่า view นี้มี policy ซ้ำกับ role + scope ปัจจุบันหรือไม่
+// ตรวจสอบว่า view นี้มี policy ซ้ำกับ role ปัจจุบันหรือไม่
 const isViewAlreadyInPolicy = (viewName: string): boolean => {
   const currentPolicies = values.access_policies || []
   return currentPolicies.some((p: any) => 
@@ -720,8 +736,9 @@ const isStepCompleted = (step: number): boolean => {
     return result.success
   }
   if (step === 3) {
-    // Step 3: Views - ไม่บังคับ
-    return true
+    // Step 3: Views - ต้องมีอย่างน้อย 1 view
+    const viewsCount = Object.keys(values.policies?.views || {}).length
+    return viewsCount > 0
   }
   if (step === 4) {
     const result = step3Schema.safeParse({ access_policies: values.access_policies })
@@ -736,7 +753,7 @@ const isStepCompleted = (step: number): boolean => {
 
 // Check if user can navigate to a specific step
 const canAccessStep = (targetStep: number): boolean => {
-  // Always allow going back
+  // Always allow going back or staying on current step
   if (targetStep <= currentStep.value) return true
   
   // To go forward, all previous steps must be completed
@@ -748,13 +765,24 @@ const canAccessStep = (targetStep: number): boolean => {
 
 // Navigation
 const goToStep = (step: number) => {
-  if (canAccessStep(step)) {
-    currentStep.value = step
-  } else {
-    showError('กรุณาทำ Step ก่อนหน้าให้เสร็จก่อน', {
-      description: 'โปรดกรอกข้อมูลในทุก Step ให้ครบถ้วน'
+  // Don't allow navigation if step is not accessible
+  if (!canAccessStep(step)) {
+    let incompleteStep = 0
+    for (let i = 1; i < step; i++) {
+      if (!isStepCompleted(i)) {
+        incompleteStep = i
+        break
+      }
+    }
+    
+    const stepName = steps.find(s => s.id === incompleteStep)?.title || `Step ${incompleteStep}`
+    showError(`กรุณาทำ ${stepName} ให้เสร็จก่อน`, {
+      description: 'โปรดกรอกข้อมูลในขั้นตอนก่อนหน้าให้ครบถ้วนก่อนไปขั้นตอนถัดไป'
     })
+    return
   }
+  
+  currentStep.value = step
 }
 
 const nextStep = async () => {
@@ -765,27 +793,6 @@ const nextStep = async () => {
     return
   }
   
-  // Log ข้อมูลของแต่ละ step
-  console.log(`=== Step ${currentStep.value} Data ===`)
-  if (currentStep.value === 1) {
-    console.log('Version:', values.version)
-    console.log('Source ID:', values.source_id)
-    console.log('Status:', values.status)
-  } else if (currentStep.value === 2) {
-    console.log('Schema Columns:', JSON.parse(JSON.stringify(values.schema?.columns || [])))
-    console.log('Total Columns:', values.schema?.columns?.length || 0)
-  } else if (currentStep.value === 3) {
-    console.log('Views:', JSON.parse(JSON.stringify(values.policies?.views || {})))
-    console.log('Total Views:', Object.keys(values.policies?.views || {}).length)
-  } else if (currentStep.value === 4) {
-    console.log('Access Policies:', JSON.parse(JSON.stringify(values.access_policies || [])))
-    console.log('Total Policies:', values.access_policies?.length || 0)
-  } else if (currentStep.value === 5) {
-    console.log('Runtime Policies:', JSON.parse(JSON.stringify(values.policies?.runtime || {})))
-  }
-  console.log('Complete values object:', JSON.parse(JSON.stringify(values)))
-  console.log('======================')
-  
   if (currentStep.value < 5) {
     currentStep.value++
   }
@@ -795,6 +802,13 @@ const prevStep = () => {
   if (currentStep.value > 1) {
     currentStep.value--
   }
+}
+
+const closeSheet = () => {
+  isOpen.value = false
+  setTimeout(() => {
+    router.push({ name: ROUTE_NAMES.DATASET_VERSION, params: { id: datasetId.value } })
+  }, 300)
 }
 
 const onSubmit = async () => {
@@ -811,16 +825,23 @@ const onSubmit = async () => {
     }
 
     // Build write and delete policies based on key_field
-    const keyField = values.policies?.runtime?.key_field
+    const keyFieldFull = values.policies?.runtime?.key_field
     const mainTable = values.policies?.runtime?.query?.from?.table
     
-    if (keyField && mainTable) {
+    if (keyFieldFull && mainTable) {
+      // Extract column name from table_name.column_name format
+      const keyField = keyFieldFull.includes('.') ? keyFieldFull.split('.')[1] : keyFieldFull
+      const keyFieldTable = keyFieldFull.includes('.') ? keyFieldFull.split('.')[0] : mainTable
+      
       // Find the key field column details
       const keyFieldColumn = values.schema?.columns?.find(
-        col => col.name === keyField && col.table_name === mainTable
+        col => col.name === keyField && col.table_name === keyFieldTable
       )
       
       if (keyFieldColumn) {
+        // Set runtime key_field to just the column name for API
+        setFieldValue('policies.runtime.key_field', keyField)
+        
         // Set write policy key_field and projections
         setFieldValue('policies.write.key_field', keyField)
         setFieldValue('policies.write.query.projections', [{
@@ -837,11 +858,6 @@ const onSubmit = async () => {
       }
     }
     
-    // Log ข้อมูลทั้งหมดก่อนส่ง
-    console.log('=== Final Data to Submit ===')
-    console.log('Full Payload:', JSON.parse(JSON.stringify(values)))
-    console.log('============================')
-
     await dataApiInstance.post(
       `/v1/datasets/${datasetId.value}/versions`,
       values
@@ -850,8 +866,16 @@ const onSubmit = async () => {
     showSuccess('สร้าง Dataset Version สำเร็จ', {
       description: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
     })
+//close sheet and refresh page
+    isOpen.value = false
+    setTimeout(() => {
+      router.push({ 
+        name: ROUTE_NAMES.DATASET_VERSION, 
+        params: { id: datasetId.value },
+        query: { refresh: 'true' }
+      })
+    }, 300)
 
-    closeSheet()
   } catch (error: any) {
     console.error('Failed to create version:', error)
     showError('ไม่สามารถสร้าง Dataset Version ได้', {
@@ -871,6 +895,7 @@ watch([currentStep, () => values.source_id], ([step, sourceId]) => {
 
 onMounted(() => {
   loadSources()
+  loadRoles()
 })
 </script>
 
@@ -892,19 +917,33 @@ onMounted(() => {
                 :variant="currentStep === step.id ? 'default' : currentStep > step.id ? 'default' : 'outline'"
                 size="icon"
                 class="z-10 rounded-full shrink-0"
-                :class="currentStep > step.id && 'bg-primary'"
+                :class="[
+                  currentStep > step.id && 'bg-primary',
+                  !canAccessStep(step.id) && 'opacity-50 cursor-not-allowed'
+                ]"
                 :disabled="!canAccessStep(step.id)"
-                @click="goToStep(step.id)"
+                @click="canAccessStep(step.id) ? goToStep(step.id) : null"
               >
                 <Check v-if="currentStep > step.id" class="h-5 w-5" />
                 <span v-else>{{ step.id }}</span>
               </Button>
             </StepperTrigger>
             <div class="mt-2 flex flex-col items-center text-center">
-              <StepperTitle :class="[currentStep >= step.id ? 'text-primary' : 'text-muted-foreground']" class="text-sm font-semibold">
+              <StepperTitle 
+                :class="[
+                  currentStep >= step.id ? 'text-primary' : 'text-muted-foreground',
+                  !canAccessStep(step.id) && currentStep !== step.id ? 'opacity-50' : ''
+                ]" 
+                class="text-sm font-semibold"
+              >
                 {{ step.title }}
               </StepperTitle>
-              <StepperDescription class="sr-only md:not-sr-only text-xs text-muted-foreground">
+              <StepperDescription 
+                :class="[
+                  !canAccessStep(step.id) && currentStep !== step.id ? 'opacity-50' : ''
+                ]"
+                class="sr-only md:not-sr-only text-xs text-muted-foreground"
+              >
                 {{ step.description }}
               </StepperDescription>
             </div>
@@ -929,14 +968,14 @@ onMounted(() => {
               </FormItem>
             </FormField>
             
-            <!-- Source -->
+            <!-- Database -->
             <FormField v-slot="{ componentField }" name="source_id">
               <FormItem>
-                <FormLabel>Source <span class="text-red-500">*</span></FormLabel>
+                <FormLabel>Database <span class="text-red-500">*</span></FormLabel>
                 <Select v-bind="componentField" :disabled="isLoadingSources">
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="เลือก Source" />
+                      <SelectValue placeholder="เลือก Database" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -996,7 +1035,7 @@ onMounted(() => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <p v-if="!values.source_id" class="text-xs text-muted-foreground">กรุณาเลือก Source ใน Step 1 ก่อน</p>
+                  <p v-if="!values.source_id" class="text-xs text-muted-foreground">กรุณาเลือก Database ใน Step 1 ก่อน</p>
                   <p v-else-if="isLoadingSchemas" class="text-xs text-muted-foreground">กำลังโหลด Schemas...</p>
                   <p v-else-if="schemas.length === 0" class="text-xs text-muted-foreground">ไม่พบ Schema</p>
                 </div>
@@ -1194,24 +1233,28 @@ onMounted(() => {
 
             <div class="border rounded-lg p-4 space-y-4 bg-muted/20">
               <h3 class="font-semibold text-sm">สร้าง Policy ใหม่</h3>
-              
-              <div class="grid grid-cols-2 gap-3">
-                <div class="space-y-2">
-                  <Label>Role <span class="text-red-500">*</span></Label>
-                  <Input v-model="newPolicy.role" placeholder="admin, user, guest" />
-                </div>
-                <div class="space-y-2">
-                  <Label>Scope</Label>
-                  <Select v-model="newPolicy.scope">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">ทั้งหมด (All)</SelectItem>
-                      <SelectItem value="own">ของตัวเอง (Own)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                            <div class="space-y-2">
+                <Label>Role <span class="text-red-500">*</span></Label>
+                <Select v-model="newPolicy.role">
+                  <SelectTrigger :disabled="isLoadingRoles">
+                    <SelectValue placeholder="เลือก Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div v-if="isLoadingRoles" class="flex items-center justify-center py-2">
+                      <Loader2 class="h-4 w-4 animate-spin" />
+                      <span class="ml-2 text-sm text-muted-foreground">กำลังโหลด...</span>
+                    </div>
+                    <SelectItem 
+                      v-else 
+                      v-for="role in roles" 
+                      :key="role.id" 
+                      :value="role.name"
+                      class="cursor-pointer"
+                    >
+                      {{ role.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div class="space-y-3">
@@ -1306,7 +1349,6 @@ onMounted(() => {
                     <div class="space-y-1 flex-1">
                       <div class="flex items-center gap-2">
                         <Badge variant="default">{{ policy.role }}</Badge>
-                        <Badge variant="outline">{{ policy.scope }}</Badge>
                       </div>
                       
                       <div class="flex gap-2 text-xs">
@@ -1377,7 +1419,8 @@ onMounted(() => {
                       <SelectItem 
                         v-for="col in (values.schema?.columns || [])" 
                         :key="`${col.table_name}.${col.name}`" 
-                        :value="col.name">
+                        :value="`${col.table_name}.${col.name}`"
+                        class="cursor-pointer">
                         <span class="font-mono">{{ col.name }}</span>
                         <span class="text-xs text-muted-foreground ml-2">({{ col.table_name }})</span>
                       </SelectItem>
@@ -1549,16 +1592,16 @@ onMounted(() => {
 
         <!-- Navigation -->
         <div class="flex justify-between pt-6 border-t">
-          <Button @click="prevStep" variant="outline" :disabled="currentStep === 1">
+          <Button @click="prevStep" variant="outline" :disabled="currentStep === 1" :class="currentStep === 1 ? '' : 'cursor-pointer'">
             <ChevronLeft class="h-4 w-4 mr-1" />ย้อนกลับ
           </Button>
           
           <div class="flex gap-2">
-            <Button @click="closeSheet" variant="outline" :disabled="isSubmitting">ยกเลิก</Button>
-            <Button v-if="currentStep < 5" @click="nextStep" :disabled="!canGoNext">
+            <Button @click="closeSheet" variant="outline" :disabled="isSubmitting" :class="isSubmitting ? '' : 'cursor-pointer'">ยกเลิก</Button>
+            <Button v-if="currentStep < 5" @click="nextStep" :disabled="!canGoNext" :class="!canGoNext ? '' : 'cursor-pointer'">
               ถัดไป<ChevronRight class="h-4 w-4 ml-1" />
             </Button>
-            <Button v-else @click="onSubmit" :disabled="isSubmitting || !canGoNext">
+            <Button v-else @click="onSubmit" :disabled="isSubmitting || !canGoNext" :class="(isSubmitting || !canGoNext) ? '' : 'cursor-pointer'">
               <Loader2 v-if="isSubmitting" class="h-4 w-4 animate-spin mr-2" />
               สร้าง Version
             </Button>

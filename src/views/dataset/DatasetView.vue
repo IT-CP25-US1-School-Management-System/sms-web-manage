@@ -55,7 +55,7 @@ const searchQuery = ref('')
 const isLoading = ref(false)
 const isDeleting = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
-const searchTimeout = ref<number | null>(null)
+
 const showDeleteDialog = ref(false)
 const datasetToDelete = ref<Dataset | null>(null)
 
@@ -141,15 +141,7 @@ const handleSearch = () => {
   loadDatasets()
 }
 
-const debouncedSearch = () => {
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value)
-  }
-  
-  searchTimeout.value = setTimeout(() => {
-    handleSearch()
-  }, 500)
-}
+
 
 const goToEditDataset = (dataset: Dataset) => {
   router.push({ name: ROUTE_NAMES.DATASET_EDIT, params: { id: dataset.id } })
@@ -218,9 +210,6 @@ const nextPage = () => {
 }
 
 // Watchers
-watch(searchQuery, () => {
-  debouncedSearch()
-})
 
 // Watch route changes to reload data when returning from create/edit
 watch(() => route.name, (newName, oldName) => {
@@ -247,7 +236,7 @@ onMounted(() => {
             จัดการและดูข้อมูลชุดข้อมูลต่าง ๆ ของระบบ
           </p>
         </div>
-        <Button @click="goToCreateDataset" class="flex items-center gap-2">
+        <Button @click="goToCreateDataset" class="flex items-center gap-2 cursor-pointer">
           <Plus class="h-4 w-4" />
           สร้าง Dataset ใหม่
         </Button>
@@ -266,7 +255,7 @@ onMounted(() => {
                 @keyup.enter="handleSearch"
               />
             </div>
-            <Button @click="handleSearch" :disabled="isLoading">
+            <Button @click="handleSearch" :disabled="isLoading" class="cursor-pointer">
               <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin mr-2" />
               ค้นหา
             </Button>
@@ -274,6 +263,7 @@ onMounted(() => {
               v-if="searchQuery" 
               @click="searchQuery = ''; handleSearch()" 
               variant="outline"
+              class="cursor-pointer"
             >
               ล้าง
             </Button>
@@ -306,7 +296,7 @@ onMounted(() => {
             <AlertCircle class="h-12 w-12 text-destructive mb-4" />
             <h3 class="text-lg font-semibold mb-2">เกิดข้อผิดพลาด</h3>
             <p class="text-muted-foreground mb-4">{{ errorMessage }}</p>
-            <Button @click="loadDatasets()" variant="outline">
+            <Button @click="loadDatasets()" variant="outline" class="cursor-pointer">
               <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin mr-2" />
               ลองใหม่
             </Button>
@@ -319,7 +309,7 @@ onMounted(() => {
             <p class="text-muted-foreground mb-4">
               {{ searchQuery ? 'ไม่พบ dataset ที่ตรงกับการค้นหา' : 'ยังไม่มี dataset ในระบบ' }}
             </p>
-            <Button @click="goToCreateDataset" variant="outline">
+            <Button @click="goToCreateDataset" variant="outline" class="cursor-pointer">
               <Plus class="h-4 w-4 mr-2" />
               สร้าง Dataset แรก
             </Button>
@@ -394,7 +384,7 @@ onMounted(() => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          class="h-8 w-8 p-0"
+                          class="h-8 w-8 p-0 cursor-pointer"
                           :disabled="isDeleting === dataset.id"
                         >
                           <Loader2 v-if="isDeleting === dataset.id" class="h-4 w-4 animate-spin" />
@@ -402,17 +392,17 @@ onMounted(() => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem @click="goToDatasetVersion(dataset)">
+                        <DropdownMenuItem @click="goToDatasetVersion(dataset)" class="cursor-pointer">
                           <FileText class="mr-2 h-4 w-4" />
                           ดูรายละเอียด
                         </DropdownMenuItem>
-                        <DropdownMenuItem @click="goToEditDataset(dataset)">
+                        <DropdownMenuItem @click="goToEditDataset(dataset)" class="cursor-pointer">
                           <Edit class="mr-2 h-4 w-4" />
                           แก้ไข
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           @click="handleDeleteClick(dataset)" 
-                          class="text-destructive focus:text-destructive"
+                          class="text-destructive focus:text-destructive cursor-pointer"
                         >
                           <Trash2 class="mr-2 h-4 w-4" />
                           ลบ

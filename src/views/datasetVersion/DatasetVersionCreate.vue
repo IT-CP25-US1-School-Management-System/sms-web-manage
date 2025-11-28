@@ -825,16 +825,23 @@ const onSubmit = async () => {
     }
 
     // Build write and delete policies based on key_field
-    const keyField = values.policies?.runtime?.key_field
+    const keyFieldFull = values.policies?.runtime?.key_field
     const mainTable = values.policies?.runtime?.query?.from?.table
     
-    if (keyField && mainTable) {
+    if (keyFieldFull && mainTable) {
+      // Extract column name from table_name.column_name format
+      const keyField = keyFieldFull.includes('.') ? keyFieldFull.split('.')[1] : keyFieldFull
+      const keyFieldTable = keyFieldFull.includes('.') ? keyFieldFull.split('.')[0] : mainTable
+      
       // Find the key field column details
       const keyFieldColumn = values.schema?.columns?.find(
-        col => col.name === keyField && col.table_name === mainTable
+        col => col.name === keyField && col.table_name === keyFieldTable
       )
       
       if (keyFieldColumn) {
+        // Set runtime key_field to just the column name for API
+        setFieldValue('policies.runtime.key_field', keyField)
+        
         // Set write policy key_field and projections
         setFieldValue('policies.write.key_field', keyField)
         setFieldValue('policies.write.query.projections', [{
@@ -1412,7 +1419,8 @@ onMounted(() => {
                       <SelectItem 
                         v-for="col in (values.schema?.columns || [])" 
                         :key="`${col.table_name}.${col.name}`" 
-                        :value="col.name">
+                        :value="`${col.table_name}.${col.name}`"
+                        class="cursor-pointer">
                         <span class="font-mono">{{ col.name }}</span>
                         <span class="text-xs text-muted-foreground ml-2">({{ col.table_name }})</span>
                       </SelectItem>

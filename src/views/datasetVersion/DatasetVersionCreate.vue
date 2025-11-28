@@ -92,7 +92,7 @@ const step2Schema = z.object({
 const step3Schema = z.object({
   access_policies: z.array(z.object({
     role: z.string().min(1, 'กรุณากรอก Role'),
-    scope: z.string().min(1, 'กรุณากรอก Scope'),
+    scope: z.string().default('all'),
     can_view: z.boolean(),
     can_edit: z.boolean(),
     can_delete: z.boolean(),
@@ -127,7 +127,7 @@ const fullSchema = z.object({
   }),
   access_policies: z.array(z.object({
     role: z.string().min(1, 'กรุณากรอก Role'),
-    scope: z.string().min(1, 'กรุณากรอก Scope'),
+    scope: z.string().default('all'),
     can_view: z.boolean(),
     can_edit: z.boolean(),
     can_delete: z.boolean(),
@@ -442,7 +442,7 @@ const addPolicy = () => {
   if (newPolicy.value.role && newPolicy.value.allow_view.length > 0) {
     const currentPolicies = values.access_policies || []
     
-    // ตรวจสอบว่ามี role + scope + view ซ้ำกันหรือไม่ (ไม่ว่า permissions จะเหมือนหรือไม่)
+    // ตรวจสอบว่ามี role + view ซ้ำกันหรือไม่ (ไม่ว่า permissions จะเหมือนหรือไม่)
     const duplicateViews: string[] = []
     newPolicy.value.allow_view.forEach(view => {
       const isDuplicate = currentPolicies.some((p: any) => 
@@ -458,12 +458,12 @@ const addPolicy = () => {
     // ถ้ามี view ซ้ำ แสดง error และหยุดการทำงาน
     if (duplicateViews.length > 0) {
       showError('ไม่สามารถเพิ่ม Policy ได้', {
-        description: `มีการกำหนด Role "${newPolicy.value.role}" + Scope "${newPolicy.value.scope}" สำหรับ View: ${duplicateViews.join(', ')} อยู่แล้ว กรุณาเลือก View อื่นหรือแก้ไข Policy ที่มีอยู่`
+        description: `มีการกำหนด Role "${newPolicy.value.role}" สำหรับ View: ${duplicateViews.join(', ')} อยู่แล้ว กรุณาเลือก View อื่นหรือแก้ไข Policy ที่มีอยู่`
       })
       return
     }
     
-    // หา policy ที่มี role + permissions + scope เหมือนกันทุกอย่าง
+    // หา policy ที่มี role + permissions เหมือนกันทุกอย่าง
     const existingPolicyIndex = currentPolicies.findIndex(
       (p: any) => 
         p.role === newPolicy.value.role && 
@@ -474,7 +474,7 @@ const addPolicy = () => {
     )
     
     if (existingPolicyIndex > -1) {
-      // ถ้ามี policy ที่ role + permissions + scope เหมือนกันทุกอย่าง ให้รวม tables
+      // ถ้ามี policy ที่ role + permissions เหมือนกันทุกอย่าง ให้รวม tables
       const existingPolicy = currentPolicies[existingPolicyIndex]!
       const mergedTables = [...new Set([...existingPolicy.allow_view, ...newPolicy.value.allow_view])]
       
@@ -542,7 +542,7 @@ const isViewSelected = (viewName: string): boolean => {
   return newPolicy.value.allow_view.includes(viewName)
 }
 
-// ตรวจสอบว่า view นี้มี policy ซ้ำกับ role + scope ปัจจุบันหรือไม่
+// ตรวจสอบว่า view นี้มี policy ซ้ำกับ role ปัจจุบันหรือไม่
 const isViewAlreadyInPolicy = (viewName: string): boolean => {
   const currentPolicies = values.access_policies || []
   return currentPolicies.some((p: any) => 
@@ -1227,41 +1227,28 @@ onMounted(() => {
             <div class="border rounded-lg p-4 space-y-4 bg-muted/20">
               <h3 class="font-semibold text-sm">สร้าง Policy ใหม่</h3>
               
-              <div class="grid grid-cols-2 gap-3">
-                <div class="space-y-2">
-                  <Label>Role <span class="text-red-500">*</span></Label>
-                  <Select v-model="newPolicy.role">
-                    <SelectTrigger :disabled="isLoadingRoles">
-                      <SelectValue placeholder="เลือก Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div v-if="isLoadingRoles" class="flex items-center justify-center py-2">
-                        <Loader2 class="h-4 w-4 animate-spin" />
-                        <span class="ml-2 text-sm text-muted-foreground">กำลังโหลด...</span>
-                      </div>
-                      <SelectItem 
-                        v-else 
-                        v-for="role in roles" 
-                        :key="role.id" 
-                        :value="role.name"
-                      >
-                        {{ role.name }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div class="space-y-2">
-                  <Label>Scope</Label>
-                  <Select v-model="newPolicy.scope">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">ทั้งหมด (All)</SelectItem>
-                      <SelectItem value="own">ของตัวเอง (Own)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div class="space-y-2">
+                <Label>Role <span class="text-red-500">*</span></Label>
+                <Select v-model="newPolicy.role">
+                  <SelectTrigger :disabled="isLoadingRoles">
+                    <SelectValue placeholder="เลือก Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <div v-if="isLoadingRoles" class="flex items-center justify-center py-2">
+                      <Loader2 class="h-4 w-4 animate-spin" />
+                      <span class="ml-2 text-sm text-muted-foreground">กำลังโหลด...</span>
+                    </div>
+                    <SelectItem 
+                      v-else 
+                      v-for="role in roles" 
+                      :key="role.id" 
+                      :value="role.name"
+                      class="cursor-pointer"
+                    >
+                      {{ role.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div class="space-y-3">
@@ -1356,7 +1343,6 @@ onMounted(() => {
                     <div class="space-y-1 flex-1">
                       <div class="flex items-center gap-2">
                         <Badge variant="default">{{ policy.role }}</Badge>
-                        <Badge variant="outline">{{ policy.scope }}</Badge>
                       </div>
                       
                       <div class="flex gap-2 text-xs">

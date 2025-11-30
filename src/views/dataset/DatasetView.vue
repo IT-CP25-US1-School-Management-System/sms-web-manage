@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, MoreHorizontal, Edit } from 'lucide-vue-next'
 import { dataApiInstance } from '@/stores/api'
-import { DATASET_SENSITIVITY, ROUTE_NAMES } from '@/lib/constants'
+import { ROUTE_NAMES } from '@/lib/constants'
 import type { Dataset, DatasetSearchParams, DatasetSearchResponse, ApiResponse } from '@/types/dataset'
 
 const router = useRouter()
@@ -178,16 +178,6 @@ const goToCreateDataset = () => {
   router.push({ name: ROUTE_NAMES.DATASET_CREATE })
 }
 
-const getSensitivityColor = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC: return 'bg-green-100 text-green-800'
-    case DATASET_SENSITIVITY.INTERNAL: return 'bg-blue-100 text-blue-800'
-    case DATASET_SENSITIVITY.CONFIDENTIAL: return 'bg-orange-100 text-orange-800'
-    case DATASET_SENSITIVITY.RESTRICTED: return 'bg-red-100 text-red-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
 
 
 const goToPage = (page: number) => {
@@ -320,11 +310,9 @@ onMounted(() => {
             <TableHeader>
               <TableRow>
                 <TableHead>ชื่อ Dataset</TableHead>
-                <TableHead>Domain</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead>Sensitivity</TableHead>
-                <TableHead>Has PII</TableHead>
                 <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -365,17 +353,6 @@ onMounted(() => {
                 </TableCell>
                 <TableCell>
                   <span class="text-sm">{{ dataset.owner }}</span>
-                </TableCell>
-                <TableCell>
-                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs capitalize">
-                    {{ dataset.sensitivity }}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge v-if="dataset.has_pii" variant="destructive" class="text-xs">
-                    PII
-                  </Badge>
-                  <span v-else class="text-muted-foreground text-sm">  -</span>
                 </TableCell>
                 <TableCell class="text-right" @click.stop>
                   <div class="flex items-center justify-center gap-2">

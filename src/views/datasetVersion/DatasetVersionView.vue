@@ -232,7 +232,7 @@ watch(() => route.query.refresh, (newRefresh) => {
             <div class="space-y-1">
               <div class="text-sm text-muted-foreground flex items-center gap-1">
                 <HardDrive class="h-3 w-3" />
-                Domain
+                Category
               </div>
               <Badge v-if="dataset?.domain" variant="outline">{{ dataset.domain }}</Badge>
               <span v-else class="text-sm text-muted-foreground">-</span>

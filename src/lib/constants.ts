@@ -25,3 +25,12 @@ export const ROUTE_NAMES = {
   ROLES_UPDATE: "RolesUpdate",
   USER_DETAIL: "UserDetail",
 } as const;
+
+export const DATASET_SENSITIVITY = {
+  PUBLIC: 'public',
+  INTERNAL: 'internal',
+  CONFIDENTIAL: 'confidential',
+  RESTRICTED: 'restricted'
+} as const;
+
+export type DatasetSensitivity = typeof DATASET_SENSITIVITY[keyof typeof DATASET_SENSITIVITY];

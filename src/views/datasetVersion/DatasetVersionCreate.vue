@@ -258,7 +258,6 @@ const loadSources = async () => {
       name: source.name,
     }))
   } catch (error) {
-    console.error('Failed to load databases:', error)
     showError('ไม่สามารถโหลดข้อมูล Database ได้', {
       description: 'กรุณาลองใหม่อีกครั้ง',
     })
@@ -276,7 +275,6 @@ const loadSchemas = async () => {
     })
     schemas.value = response.data.data
   } catch (error) {
-    console.error('Failed to load schemas:', error)
     showError('ไม่สามารถโหลดข้อมูล Schema ได้')
   } finally {
     isLoadingSchemas.value = false
@@ -292,7 +290,6 @@ const loadTables = async () => {
     })
     tables.value = response.data.data
   } catch (error) {
-    console.error('Failed to load tables:', error)
     showError('ไม่สามารถโหลดข้อมูล Table ได้')
   } finally {
     isLoadingTables.value = false
@@ -319,7 +316,6 @@ const loadColumns = async () => {
       return posA - posB
     })
   } catch (error) {
-    console.error('Failed to load columns:', error)
     showError('ไม่สามารถโหลดข้อมูล Column ได้')
   } finally {
     isLoadingColumns.value = false
@@ -334,7 +330,6 @@ const loadRoles = async () => {
     })
     roles.value = response.data.data
   } catch (error) {
-    console.error('Failed to load roles:', error)
     showError('ไม่สามารถโหลดข้อมูล Role ได้', {
       description: 'กรุณาลองใหม่อีกครั้ง'
     })
@@ -373,6 +368,13 @@ const addColumnFromList = (column: any) => {
       }]
       setFieldValue('policies.runtime.query.projections', newProjections)
     }
+    
+    // Auto-update policies if main table is already set
+    if (mainTable.value === column.table_name) {
+      nextTick(() => {
+        refreshMainTableColumns()
+      })
+    }
   }
 }
 
@@ -381,6 +383,13 @@ const addAllColumnsFromTable = () => {
   columns.value.forEach(column => {
     addColumnFromList(column)
   })
+  
+  // Auto-update policies if main table is the same as selected table
+  if (mainTable.value === selectedTable.value) {
+    nextTick(() => {
+      refreshMainTableColumns()
+    })
+  }
 }
 
 const removeColumn = (index: number) => {
@@ -436,9 +445,6 @@ const availableViews = computed(() => {
 
 // Step 4: Access Policies functions
 const addPolicy = () => {
-  console.log('Before add - newPolicy:', JSON.parse(JSON.stringify(newPolicy.value)))
-  console.log('Current access_policies:', JSON.parse(JSON.stringify(values.access_policies)))
-  
   if (newPolicy.value.role && newPolicy.value.allow_view.length > 0) {
     const currentPolicies = values.access_policies || []
     
@@ -501,8 +507,6 @@ const addPolicy = () => {
       setFieldValue('access_policies', newPolicies)
     }
     
-    console.log('After add - access_policies:', JSON.parse(JSON.stringify(values.access_policies)))
-    
     // Reset form ใช้ nextTick เพื่อให้ Vue update DOM ก่อน
     nextTick(() => {
       newPolicy.value = {
@@ -513,7 +517,6 @@ const addPolicy = () => {
         can_delete: false,
         allow_view: [],
       }
-      console.log('After reset - newPolicy:', JSON.parse(JSON.stringify(newPolicy.value)))
     })
   }
 }
@@ -659,6 +662,235 @@ const removeTableFromView = (viewName: string, tableIndex: number) => {
   }
 }
 
+// Auto-detect foreign key relationships
+const detectForeignKeyRelationships = () => {
+  const tables = availableTables.value
+  const relationships: Array<{
+    table_from: string
+    table_to: string
+    column_from: string
+    column_to: string
+    confidence: number
+    pattern: string
+  }> = []
+
+  // Helper function to convert singular to plural
+  const singularToPlural = (word: string): string[] => {
+    const irregulars: Record<string, string> = {
+      'person': 'people',
+      'child': 'children',
+      'category': 'categories',
+      'company': 'companies',
+      'city': 'cities',
+      'country': 'countries',
+      'story': 'stories',
+      'party': 'parties',
+      'family': 'families',
+      'diary': 'diaries',
+      'lady': 'ladies',
+      'baby': 'babies',
+      'army': 'armies',
+      'library': 'libraries',
+      'dictionary': 'dictionaries',
+      'frequency': 'frequencies',
+      'agency': 'agencies',
+      'policy': 'policies',
+      'variety': 'varieties'
+    }
+    
+    const variants = []
+    
+    // Add irregular plural if exists
+    if (irregulars[word]) {
+      variants.push(irregulars[word])
+    }
+    
+    // Add regular plural forms
+    if (word.endsWith('y')) {
+      variants.push(word.slice(0, -1) + 'ies')
+    } else if (word.endsWith('s') || word.endsWith('sh') || word.endsWith('ch') || word.endsWith('x') || word.endsWith('z')) {
+      variants.push(word + 'es')
+    } else {
+      variants.push(word + 's')
+    }
+    
+    // Also try the original word (for tables with same singular/plural)
+    variants.push(word)
+    
+    return [...new Set(variants)] // Remove duplicates
+  }
+
+  // Common foreign key patterns with confidence scores
+  const fkPatterns = [
+    // High confidence patterns
+    { pattern: /^(.+)_id$/i, confidence: 0.95, description: 'Standard FK pattern (table_id)' },
+    { pattern: /^(.+)Id$/i, confidence: 0.90, description: 'CamelCase FK pattern (tableId)' },
+    
+    // Medium confidence patterns
+    { pattern: /^(.+)_key$/i, confidence: 0.85, description: 'Key pattern (table_key)' },
+    { pattern: /^(.+)_ref$/i, confidence: 0.80, description: 'Reference pattern (table_ref)' },
+    { pattern: /^ref_(.+)$/i, confidence: 0.75, description: 'Reverse reference pattern (ref_table)' },
+    
+    // Lower confidence patterns
+    { pattern: /^(.+)_code$/i, confidence: 0.70, description: 'Code pattern (table_code)' },
+    { pattern: /^(.+)_number$/i, confidence: 0.65, description: 'Number pattern (table_number)' },
+    { pattern: /^(.+)_no$/i, confidence: 0.65, description: 'Number abbreviation pattern (table_no)' }
+  ]
+
+  tables.forEach(table => {
+    const tableColumns = groupedColumns.value[table] || []
+    
+    tableColumns.forEach((col: any) => {
+      // Skip likely primary keys
+      if (['id', 'uuid', 'guid'].includes(col.name.toLowerCase())) return
+      
+      fkPatterns.forEach(({ pattern, confidence, description }) => {
+        const match = col.name.match(pattern)
+        if (match) {
+          const baseName = match[1].toLowerCase()
+          const possibleTargetTables = singularToPlural(baseName)
+          
+          // Find matching target table
+          possibleTargetTables.forEach(targetTable => {
+            // Try exact match and case-insensitive match
+            const exactMatch = tables.find(t => t === targetTable)
+            const caseInsensitiveMatch = tables.find(t => t.toLowerCase() === targetTable.toLowerCase())
+            const foundTable = exactMatch || caseInsensitiveMatch
+            
+            if (foundTable && foundTable !== table) {
+              const targetTableColumns = groupedColumns.value[foundTable] || []
+              
+              // Look for potential target columns (id, uuid, code, etc.)
+              const potentialTargetColumns = ['id', 'uuid', 'guid', 'code', 'key', `${baseName}_id`]
+              const targetColumn = targetTableColumns.find((targetCol: any) => 
+                potentialTargetColumns.includes(targetCol.name.toLowerCase())
+              )
+              
+              if (targetColumn) {
+                // Adjust confidence based on additional factors
+                let finalConfidence = confidence
+                
+                // Boost confidence if target column is 'id'
+                if (targetColumn.name.toLowerCase() === 'id') {
+                  finalConfidence += 0.05
+                }
+                
+                // Boost confidence if exact table name match
+                if (exactMatch) {
+                  finalConfidence += 0.03
+                }
+                
+                // Reduce confidence if we already have a better relationship
+                const existingRelationship = relationships.find(r => 
+                  r.table_from === table && r.column_from === col.name
+                )
+                
+                if (!existingRelationship || existingRelationship.confidence < finalConfidence) {
+                  // Remove existing lower confidence relationship
+                  if (existingRelationship) {
+                    const index = relationships.indexOf(existingRelationship)
+                    relationships.splice(index, 1)
+                  }
+                  
+                  relationships.push({
+                    table_from: table,
+                    table_to: foundTable,
+                    column_from: col.name,
+                    column_to: targetColumn.name,
+                    confidence: finalConfidence,
+                    pattern: description
+                  })
+                }
+              }
+            }
+          })
+        }
+      })
+    })
+  })
+
+  // Remove duplicate relationships and sort by confidence
+  const uniqueRelationships = relationships
+    .filter((rel, index, self) => 
+      index === self.findIndex(r => 
+        r.table_from === rel.table_from && 
+        r.table_to === rel.table_to && 
+        r.column_from === rel.column_from &&
+        r.column_to === rel.column_to
+      )
+    )
+    .sort((a, b) => b.confidence - a.confidence)
+
+  return uniqueRelationships
+}
+
+const autoGenerateJoins = (mainTableName: string) => {
+  const relationships = detectForeignKeyRelationships()
+  const joins: any[] = []
+  const processedTables = new Set([mainTableName])
+
+  // Filter relationships by confidence threshold (only use high-confidence relationships)
+  const highConfidenceRelationships = relationships.filter(rel => rel.confidence >= 0.75)
+
+  // Main table has FK to lookup table (many_to_one)
+  highConfidenceRelationships.forEach(rel => {
+    if (rel.table_from === mainTableName && !processedTables.has(rel.table_to)) {
+      const joinedTableColumns = groupedColumns.value[rel.table_to] || []
+      const joinProjections = joinedTableColumns
+        .filter((col: any) => col.name.toLowerCase() !== 'id')
+        .map((col: any) => ({
+          column: col.name,
+          alias: `${rel.table_to}_${col.name}`
+        }))
+      joins.push({
+        type: 'LEFT',
+        table_from: rel.table_from,
+        table_to: rel.table_to,
+        condition: {
+          column_from: rel.column_from,
+          column_to: rel.column_to,
+          operator: '='
+        },
+        relation: 'many_to_one',
+        alias: rel.table_to.toLowerCase(),
+        projections: joinProjections
+      })
+      processedTables.add(rel.table_to)
+    }
+  })
+
+  // Lookup table has FK to main table (one_to_many)
+  highConfidenceRelationships.forEach(rel => {
+    if (rel.table_to === mainTableName && !processedTables.has(rel.table_from)) {
+      const joinedTableColumns = groupedColumns.value[rel.table_from] || []
+      const joinProjections = joinedTableColumns
+        .filter((col: any) => col.name.toLowerCase() !== 'id' && col.name !== rel.column_from)
+        .map((col: any) => ({
+          column: col.name,
+          alias: `${rel.table_from}_${col.name}`
+        }))
+      if (joinProjections.length > 0) {
+        joins.push({
+          type: 'LEFT',
+          table_from: mainTableName,
+          table_to: rel.table_from,
+          condition: {
+            column_from: rel.column_to,
+            column_to: rel.column_from,
+            operator: '='
+          },
+          relation: 'one_to_many',
+          alias: rel.table_from.toLowerCase(),
+          projections: joinProjections
+        })
+        processedTables.add(rel.table_from)
+      }
+    }
+  })
+
+  return joins
+}
+
 // Step 5: Runtime Policies - Join Configuration
 const setMainTable = (tableName: string) => {
   mainTable.value = tableName
@@ -668,10 +900,105 @@ const setMainTable = (tableName: string) => {
   setFieldValue('policies.write.query.from', { table: tableName })
   setFieldValue('policies.delete.query.from', { table: tableName })
   
-  // Get main table columns for allow_edit
-  const mainTableColumns = groupedColumns.value[tableName] || []
-  const allowEditColumns = mainTableColumns.map((col: any) => col.name)
-  setFieldValue('policies.write.allow_edit', allowEditColumns)
+  // Auto-generate joins based on foreign key relationships
+  const autoJoins = autoGenerateJoins(tableName)
+  if (autoJoins.length > 0) {
+    setFieldValue('policies.runtime.query.joins', autoJoins)
+    
+    // Show user feedback about auto-generated joins
+    const tableNames = autoJoins.map((join: any) => join.table_to).join(', ')
+    useToast().toast({
+      title: "🤖 Auto-generated table joins",
+      description: `Automatically linked ${autoJoins.length} table(s): ${tableNames}`,
+    })
+  } else {
+    // Clear existing joins if no auto-joins detected
+    setFieldValue('policies.runtime.query.joins', [])
+    useToast().toast({
+      title: "No relationships detected",
+      description: "No foreign key relationships found. You can add manual joins if needed.",
+      variant: "default"
+    })
+  }
+  
+  // Get columns from main table and joined tables for allow_edit
+  const updatePoliciesWithAllColumns = () => {
+    const mainTableColumns = groupedColumns.value[tableName] || []
+    let allEditableColumns = mainTableColumns.map((col: any) => col.name)
+    let whereAllowRules: Array<{
+      table_name: string
+      field: string
+      operators: string[]
+    }> = []
+    
+    // Add main table where_allow rules
+    mainTableColumns.forEach((col: any) => {
+      whereAllowRules.push({
+        table_name: tableName,
+        field: col.name,
+        operators: ['=']
+      })
+    })
+    
+    // Add columns from joined tables
+    const currentJoins = autoJoins || []
+    currentJoins.forEach((join: any) => {
+      const joinedTableColumns = groupedColumns.value[join.table_to] || []
+      
+      // Add editable columns from joined tables (prefixed to avoid conflicts)
+      joinedTableColumns
+        .filter((col: any) => col.name.toLowerCase() !== 'id') // Skip id columns from joined tables
+        .forEach((col: any) => {
+          // Use alias from projections if available, otherwise prefix with table name
+          const joinProjection = join.projections?.find((p: any) => p.column === col.name)
+          const columnAlias = joinProjection?.alias || `${join.table_to}_${col.name}`
+          allEditableColumns.push(columnAlias)
+        })
+      
+      // Add where_allow rules for joined tables
+      joinedTableColumns.forEach((col: any) => {
+        whereAllowRules.push({
+          table_name: join.table_to,
+          field: col.name,
+          operators: ['=']
+        })
+      })
+    })
+    
+
+    
+    // Always set the policies, even if arrays are empty (better to have empty than undefined)
+    setFieldValue('policies.write.allow_edit', allEditableColumns)
+    setFieldValue('policies.runtime.query.where_allow', whereAllowRules)
+    setFieldValue('policies.write.query.where_allow', whereAllowRules)
+    setFieldValue('policies.delete.query.where_allow', whereAllowRules)
+    
+    return allEditableColumns
+  }
+  
+  const allEditableColumns = updatePoliciesWithAllColumns()
+  
+  // If no columns found, wait a bit and retry (reactive data might not be ready)
+  if (allEditableColumns.length === 0) {
+    setTimeout(() => {
+      const retryColumns = updatePoliciesWithAllColumns()
+      
+      if (retryColumns.length > 0) {
+        useToast().toast({
+          title: "Columns updated",
+          description: `Updated editable columns for ${tableName}: ${retryColumns.length} columns`,
+        })
+      } else {
+        // Don't show error toast immediately - user might still be setting up
+      }
+    }, 100) // Small delay to allow reactive updates
+  } else {
+    // Show success when columns are found immediately
+    useToast().toast({
+      title: "✅ Table configured",
+      description: `Found ${allEditableColumns.length} editable columns with ${autoJoins.length} joined table(s)`,
+    })
+  }
 }
 
 const addJoin = () => {
@@ -685,6 +1012,9 @@ const addJoin = () => {
       alias: col.name
     }))
     
+    // Always use many_to_one for simplicity and consistency
+    const relationshipType = 'many_to_one'
+
     const newJoins = [...currentJoins, {
       type: 'LEFT',
       table_from: mainTable.value,
@@ -694,7 +1024,7 @@ const addJoin = () => {
         column_to: newJoin.value.rightColumn,
         operator: '='
       },
-      relation: 'one_to_one',
+      relation: relationshipType,
       alias: newJoin.value.table.toLowerCase(),
       projections: joinProjections
     }]
@@ -711,6 +1041,75 @@ const removeJoin = (index: number) => {
   setFieldValue('policies.runtime.query.joins', newJoins)
 }
 
+const refreshMainTableColumns = () => {
+  if (!mainTable.value) return
+  
+  const tableName = mainTable.value
+  const mainTableColumns = groupedColumns.value[tableName] || []
+  let allEditableColumns = mainTableColumns.map((col: any) => col.name)
+  let whereAllowRules: Array<{
+    table_name: string
+    field: string
+    operators: string[]
+  }> = []
+  
+  // Add main table where_allow rules
+  mainTableColumns.forEach((col: any) => {
+    whereAllowRules.push({
+      table_name: tableName,
+      field: col.name,
+      operators: ['=']
+    })
+  })
+  
+  // Add columns from joined tables
+  const currentJoins = formData.value.policies?.runtime?.query?.joins || []
+  currentJoins.forEach((join: any) => {
+    const joinedTableColumns = groupedColumns.value[join.table_to] || []
+    
+    // Add editable columns from joined tables
+    joinedTableColumns
+      .filter((col: any) => col.name.toLowerCase() !== 'id')
+      .forEach((col: any) => {
+        const joinProjection = join.projections?.find((p: any) => p.column === col.name)
+        const columnAlias = joinProjection?.alias || `${join.table_to}_${col.name}`
+        allEditableColumns.push(columnAlias)
+      })
+    
+    // Add where_allow rules for joined tables
+    joinedTableColumns.forEach((col: any) => {
+      whereAllowRules.push({
+        table_name: join.table_to,
+        field: col.name,
+        operators: ['=']
+      })
+    })
+  })
+  
+  // Update all policies with validation
+  if (allEditableColumns.length > 0) {
+    setFieldValue('policies.write.allow_edit', allEditableColumns)
+  }
+  
+  if (whereAllowRules.length > 0) {
+    setFieldValue('policies.runtime.query.where_allow', whereAllowRules)
+    setFieldValue('policies.write.query.where_allow', whereAllowRules)
+    setFieldValue('policies.delete.query.where_allow', whereAllowRules)
+  } else {
+    // Set minimum required where_allow rules
+    const minimalRules = [{
+      table_name: tableName,
+      field: 'id',
+      operators: ['=']
+    }]
+    setFieldValue('policies.runtime.query.where_allow', minimalRules)
+    setFieldValue('policies.write.query.where_allow', minimalRules)
+    setFieldValue('policies.delete.query.where_allow', minimalRules)
+  }
+  
+  // Policies updated - no logging needed for auto-updates
+}
+
 const getColumnsForTable = (tableName: string) => {
   return computed(() => {
     const tableColumns = groupedColumns.value[tableName] || []
@@ -723,6 +1122,32 @@ const availableJoinTables = computed(() => {
   const currentJoins = formData.value.policies?.runtime?.query?.joins || []
   const joinedTables = currentJoins.map((j: any) => j.table_to)
   return availableTables.value.filter(t => t !== mainTable.value && !joinedTables.includes(t))
+})
+
+// Computed property for auto-detection statistics
+const autoDetectionStats = computed(() => {
+  if (!mainTable.value) return null
+  
+  const allRelationships = detectForeignKeyRelationships()
+  const relevantRelationships = allRelationships.filter(rel => 
+    rel.table_from === mainTable.value || rel.table_to === mainTable.value
+  )
+  const highConfidenceRelationships = relevantRelationships.filter(rel => rel.confidence >= 0.75)
+  const currentJoins = formData.value.policies?.runtime?.query?.joins || []
+  
+  return {
+    total: relevantRelationships.length,
+    highConfidence: highConfidenceRelationships.length,
+    implemented: currentJoins.length,
+    patterns: highConfidenceRelationships.map(rel => ({
+      from: rel.table_from,
+      to: rel.table_to,
+      column_from: rel.column_from,
+      column_to: rel.column_to,
+      confidence: Math.round(rel.confidence * 100),
+      pattern: rel.pattern
+    }))
+  }
 })
 
 // Check which steps are completed
@@ -824,6 +1249,24 @@ const onSubmit = async () => {
       return
     }
 
+    // Additional validation for required policies
+    const writePolicy = values.policies?.write
+    const runtimePolicy = values.policies?.runtime?.query
+    
+    if (!writePolicy?.allow_edit?.length) {
+      showError('ข้อมูล Write Policy ไม่ครบถ้วน', {
+        description: 'กรุณาตั้งค่า Main Table ใน Step 5 เพื่อสร้าง allow_edit policies'
+      })
+      return
+    }
+    
+    if (!runtimePolicy?.where_allow?.length) {
+      showError('ข้อมูล Runtime Policy ไม่ครบถ้วน', {
+        description: 'กรุณาตั้งค่า Main Table ใน Step 5 เพื่อสร้าง where_allow policies'
+      })
+      return
+    }
+
     // Build write and delete policies based on key_field
     const keyFieldFull = values.policies?.runtime?.key_field
     const mainTable = values.policies?.runtime?.query?.from?.table
@@ -877,7 +1320,6 @@ const onSubmit = async () => {
     }, 300)
 
   } catch (error: any) {
-    console.error('Failed to create version:', error)
     showError('ไม่สามารถสร้าง Dataset Version ได้', {
       description: error.response?.data?.error?.message || 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง',
     })
@@ -892,6 +1334,32 @@ watch([currentStep, () => values.source_id], ([step, sourceId]) => {
     loadSchemas()
   }
 })
+
+// Watch for changes in columns and auto-update policies if main table is set
+watch(() => values.schema?.columns, (newColumns, oldColumns) => {
+  if (!mainTable.value || !newColumns || !oldColumns) return
+  
+  // Check if columns changed for the main table
+  const mainTableColumnsNew = newColumns.filter((col: any) => col.table_name === mainTable.value)
+  const mainTableColumnsOld = oldColumns.filter((col: any) => col.table_name === mainTable.value)
+  
+  if (mainTableColumnsNew.length !== mainTableColumnsOld.length) {
+    // Columns count changed, update policies
+    nextTick(() => {
+      refreshMainTableColumns()
+    })
+  }
+}, { deep: true })
+
+// Watch for changes in joins and auto-update policies
+watch(() => values.policies?.runtime?.query?.joins, (newJoins) => {
+  if (!mainTable.value || !newJoins) return
+  
+  // Auto-update policies when joins change
+  nextTick(() => {
+    refreshMainTableColumns()
+  })
+}, { deep: true })
 
 onMounted(() => {
   loadSources()
@@ -1408,7 +1876,7 @@ onMounted(() => {
 
               <FormField v-slot="{ componentField }" name="policies.runtime.key_field">
                 <FormItem>
-                  <FormLabel>Key Field <span class="text-red-500">*</span></FormLabel>
+                  <FormLabel>Index <span class="text-red-500">*</span></FormLabel>
                   <Select v-bind="componentField">
                     <FormControl>
                       <SelectTrigger>
@@ -1473,10 +1941,12 @@ onMounted(() => {
                 </p>
               </div>
 
+             
+
               <!-- เพิ่มการเชื่อม -->
               <div v-if="mainTable" class="space-y-4 border-t pt-4">
-                <Label>2. เชื่อมกับ Table อื่น (ถ้ามี)</Label>
-                <p class="text-xs text-muted-foreground mb-3">เลือก Table ที่ต้องการเชื่อม และระบุ Column ที่ใช้เชื่อม</p>
+                <Label>2. เพิ่มการเชื่อม Table อื่นๆ (Manual)</Label>
+                <p class="text-xs text-muted-foreground mb-3">เพิ่มการเชื่อม Table เพิ่มเติมหากระบบไม่ได้ตรวจพบอัตโนมัติ</p>
                 
                 <div class="grid gap-4 p-4 border rounded-lg bg-muted/20">
                   <!-- เลือก Table ที่จะเชื่อม -->
@@ -1554,6 +2024,7 @@ onMounted(() => {
                           {{ (join as any).condition.operator }}
                           <code class="bg-muted px-1 py-0.5 rounded">{{ (join as any).condition.column_to }}</code>
                         </span>
+                        <Badge variant="secondary" class="ml-2 text-xs">{{ (join as any).relation }}</Badge>
                       </div>
                       <Button @click="removeJoin(i)" variant="ghost" size="sm" class="text-destructive">
                         <X class="h-4 w-4" />
@@ -1584,6 +2055,25 @@ onMounted(() => {
                 </div>
                 <div v-else class="text-xs text-muted-foreground">
                   ยังไม่มีการเชื่อม Table (ไม่จำเป็นถ้าใช้ Table เดียว)
+                </div>
+
+              </div>
+            </div>
+            
+            <!-- Validation Warning -->
+            <div v-if="currentStep === 5 && mainTable && ((formData.policies?.write?.allow_edit || []).length === 0 || (formData.policies?.runtime?.query?.where_allow || []).length === 0)" 
+                 class="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 mt-4">
+              <div class="flex items-start gap-3">
+                <span class="text-xl">⚠️</span>
+                <div class="flex-1">
+                  <div class="font-semibold text-sm text-amber-800">จำเป็นต้องแก้ไขก่อน Submit</div>
+                  <div class="text-xs text-amber-700 mt-1 space-y-1">
+                    <div v-if="(formData.policies?.write?.allow_edit || []).length === 0">• <strong>allow_edit</strong> ว่างเปล่า - จำเป็นสำหรับ Write Policy</div>
+                    <div v-if="(formData.policies?.runtime?.query?.where_allow || []).length === 0">• <strong>where_allow</strong> ว่างเปล่า - จำเป็นสำหรับ Runtime Policy</div>
+                    <div class="mt-2 text-amber-600">
+                      💡 <strong>วิธีแก้:</strong> กด "🔄 Refresh" ใน Query Summary หรือตรวจสอบว่าได้เลือก columns ใน Step 2 แล้ว
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

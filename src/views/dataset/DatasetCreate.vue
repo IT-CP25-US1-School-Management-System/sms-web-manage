@@ -61,9 +61,7 @@ const datasetSchema = toTypedSchema(z.object({
   description: z.string().min(1, 'กรุณาระบุคำอธิบาย Dataset').max(500, 'คำอธิบายต้องไม่เกิน 500 ตัวอักษร'),
   domain: z.string().min(1, 'กรุณาระบุ Domain').max(50, 'Domain ต้องไม่เกิน 50 ตัวอักษร'),
   owner: z.string().min(1, 'กรุณาระบุชื่อ Owner').max(100, 'ชื่อ Owner ต้องไม่เกิน 100 ตัวอักษร'),
-  tags: z.array(z.string()).optional(),
-  has_pii: z.boolean(),
-  sensitivity: z.enum([DATASET_SENSITIVITY.PUBLIC, DATASET_SENSITIVITY.INTERNAL, DATASET_SENSITIVITY.CONFIDENTIAL, DATASET_SENSITIVITY.RESTRICTED])
+  tags: z.array(z.string()).optional()
 }))
 
 // Form setup
@@ -75,9 +73,7 @@ const { handleSubmit, values, setFieldValue } = useForm({
     description: '',
     domain: '',
     owner: '',
-    tags: [] as string[],
-    has_pii: false,
-    sensitivity: DATASET_SENSITIVITY.PUBLIC
+    tags: [] as string[]
   }
 })
 
@@ -117,7 +113,13 @@ const removeTag = (tagToRemove: string) => {
 const handleCreateDataset = handleSubmit(async (formData) => {
   isCreating.value = true
   try {
-    await createDataset(formData as DatasetUpsert)
+    // Add default values for sensitivity and has_pii
+    const datasetData = {
+      ...formData,
+      sensitivity: DATASET_SENSITIVITY.PUBLIC,
+      has_pii: false
+    }
+    await createDataset(datasetData as DatasetUpsert)
     showSuccess(`สร้าง dataset "${formData.name}" เรียบร้อยแล้ว`)
     closeSheet()
   } catch (error: any) {
@@ -247,46 +249,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
           </div>
         </div>
 
-        <!-- Sensitivity -->
-        <FormField v-slot="{ componentField }" name="sensitivity">
-          <FormItem>
-            <FormLabel>Sensitivity Level</FormLabel>
-            <Select v-bind="componentField">
-              <FormControl class="cursor-pointer">
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือก Sensitivity Level" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem :value="DATASET_SENSITIVITY.PUBLIC" class="cursor-pointer">สาธารณะ (Public)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.INTERNAL" class="cursor-pointer">ภายใน (Internal)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.CONFIDENTIAL" class="cursor-pointer">ความลับ (Confidential)</SelectItem>
-                <SelectItem :value="DATASET_SENSITIVITY.RESTRICTED" class="cursor-pointer">จำกัด (Restricted)</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        </FormField>
 
-        <!-- Has PII -->
-        <FormField v-slot="{ value, handleChange }" name="has_pii">
-          <FormItem class="flex flex-row items-start space-x-3 space-y-0">
-            <FormControl>
-              <Checkbox
-                :checked="value"
-                @update:checked="handleChange"
-              />
-            </FormControl>
-            <div class="space-y-1 leading-none">
-              <FormLabel>
-                ข้อมูลมีส่วนที่เป็นข้อมูลส่วนบุคคล (PII)
-              </FormLabel>
-              <FormDescription>
-                ทำเครื่องหมายหากชุดข้อมูลนี้มีข้อมูลส่วนบุคคล
-              </FormDescription>
-            </div>
-          </FormItem>
-        </FormField>
 
         <!-- Submit buttons -->
         <div class="flex justify-end gap-3 pt-6">

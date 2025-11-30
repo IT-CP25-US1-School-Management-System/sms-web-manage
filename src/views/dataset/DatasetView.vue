@@ -320,11 +320,9 @@ onMounted(() => {
             <TableHeader>
               <TableRow>
                 <TableHead>ชื่อ Dataset</TableHead>
-                <TableHead>Domain</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead>Sensitivity</TableHead>
-                <TableHead>Has PII</TableHead>
                 <TableHead class="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -365,17 +363,6 @@ onMounted(() => {
                 </TableCell>
                 <TableCell>
                   <span class="text-sm">{{ dataset.owner }}</span>
-                </TableCell>
-                <TableCell>
-                  <Badge :class="getSensitivityColor(dataset.sensitivity)" variant="secondary" class="text-xs capitalize">
-                    {{ dataset.sensitivity }}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge v-if="dataset.has_pii" variant="destructive" class="text-xs">
-                    PII
-                  </Badge>
-                  <span v-else class="text-muted-foreground text-sm">  -</span>
                 </TableCell>
                 <TableCell class="text-right" @click.stop>
                   <div class="flex items-center justify-center gap-2">

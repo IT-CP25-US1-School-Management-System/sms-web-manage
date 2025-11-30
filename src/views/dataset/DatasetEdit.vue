@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   FormControl,
   FormDescription,
@@ -18,13 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
 import {
   Sheet,
   SheetContent,
@@ -34,7 +27,7 @@ import {
 } from '@/components/ui/sheet'
 import { Loader2, X } from 'lucide-vue-next'
 import { dataApiInstance } from '@/stores/api'
-import { DATASET_SENSITIVITY, ROUTE_NAMES } from '@/lib/constants'
+import {ROUTE_NAMES } from '@/lib/constants'
 import type { Dataset, DatasetUpsert, ApiResponse } from '@/types/dataset'
 
 const router = useRouter()
@@ -161,7 +154,7 @@ const handleUpdateDataset = handleSubmit(async (formData) => {
     // Add default values for sensitivity and has_pii
     const datasetData = {
       ...formData,
-      sensitivity: DATASET_SENSITIVITY.PUBLIC,
+      sensitivity: "public",
       has_pii: false
     }
     await updateDataset(datasetId.value, datasetData as DatasetUpsert)

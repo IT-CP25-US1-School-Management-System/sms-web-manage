@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Search, FileText, Loader2, AlertCircle, Trash2, Plus, MoreHorizontal, Edit } from 'lucide-vue-next'
 import { dataApiInstance } from '@/stores/api'
-import { DATASET_SENSITIVITY, ROUTE_NAMES } from '@/lib/constants'
+import { ROUTE_NAMES } from '@/lib/constants'
 import type { Dataset, DatasetSearchParams, DatasetSearchResponse, ApiResponse } from '@/types/dataset'
 
 const router = useRouter()
@@ -176,16 +176,6 @@ const handleDelete = async () => {
 
 const goToCreateDataset = () => {
   router.push({ name: ROUTE_NAMES.DATASET_CREATE })
-}
-
-const getSensitivityColor = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC: return 'bg-green-100 text-green-800'
-    case DATASET_SENSITIVITY.INTERNAL: return 'bg-blue-100 text-blue-800'
-    case DATASET_SENSITIVITY.CONFIDENTIAL: return 'bg-orange-100 text-orange-800'
-    case DATASET_SENSITIVITY.RESTRICTED: return 'bg-red-100 text-red-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
 }
 
 

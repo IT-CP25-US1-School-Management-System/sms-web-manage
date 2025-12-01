@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { usePagination } from '@/composables/usePagination'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -30,7 +39,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { ArrowLeft, HardDrive, Tag, Shield, User, FileText, Plus, MoreHorizontal, Eye, XCircle, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, HardDrive, Tag, User, FileText, Plus, MoreHorizontal, Eye, XCircle, CheckCircle, Loader2 } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import { dataApiInstance } from '@/stores/api'
 import type { Dataset, DatasetVersion, DatasetVersionSearchResponse } from '@/types/dataset'
@@ -45,10 +54,14 @@ const isLoadingDataset = ref(true)
 const isLoadingVersions = ref(true)
 
 // Pagination
-const currentPage = ref(1)
-const totalPages = ref(0)
-const totalRows = ref(0)
-const perPage = ref(10)
+const paginationData = ref({
+  page: 1,
+  per_page: 10,
+  total_pages: 0,
+  total_rows: 0
+})
+
+const { getPaginationInfo, canPreviousPage, canNextPage } = usePagination(paginationData)
 
 // Detail sheet
 const isDetailOpen = ref(false)
@@ -83,30 +96,23 @@ const loadVersions = async () => {
       `/v1/datasets/${datasetId.value}/versions`,
       {
         params: {
-          page: currentPage.value,
-          per_page: perPage.value,
+          page: paginationData.value.page,
+          per_page: paginationData.value.per_page,
         }
       }
     )
     versions.value = response.data.data
-    currentPage.value = response.data.page
-    totalPages.value = response.data.total_pages
-    totalRows.value = response.data.total_rows
+    paginationData.value = {
+      page: response.data.page,
+      per_page: response.data.per_page,
+      total_pages: response.data.total_pages,
+      total_rows: response.data.total_rows
+    }
   } catch (error) {
     console.error('Failed to load versions:', error)
   } finally {
     isLoadingVersions.value = false
   }
-}
-
-const getSensitivityColor = (sensitivity: string) => {
-  const colors = {
-    public: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    internal: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    confidential: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-    restricted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  }
-  return colors[sensitivity as keyof typeof colors] || ''
 }
 
 const getStatusColor = (status: string) => {
@@ -171,6 +177,25 @@ const handleStatusChange = async () => {
   }
 }
 
+const goToPage = (page: number) => {
+  paginationData.value.page = page
+  loadVersions()
+}
+
+const previousPage = () => {
+  if (paginationData.value.page > 1) {
+    paginationData.value.page--
+    loadVersions()
+  }
+}
+
+const nextPage = () => {
+  if (paginationData.value.page < paginationData.value.total_pages) {
+    paginationData.value.page++
+    loadVersions()
+  }
+}
+
 onMounted(() => {
   loadDataset()
   loadVersions()
@@ -224,10 +249,10 @@ watch(() => route.query.refresh, (newRefresh) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div v-if="isLoadingDataset" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Skeleton v-for="i in 4" :key="i" class="h-16 w-full" />
+          <div v-if="isLoadingDataset" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton v-for="i in 3" :key="i" class="h-16 w-full" />
           </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Domain -->
             <div class="space-y-1">
               <div class="text-sm text-muted-foreground flex items-center gap-1">
@@ -247,29 +272,8 @@ watch(() => route.query.refresh, (newRefresh) => {
               <div class="text-sm font-medium">{{ dataset?.owner || '-' }}</div>
             </div>
 
-            <!-- Sensitivity -->
-            <div class="space-y-1">
-              <div class="text-sm text-muted-foreground flex items-center gap-1">
-                <Shield class="h-3 w-3" />
-                Sensitivity
-              </div>
-              <Badge :class="getSensitivityColor(dataset?.sensitivity || '')" variant="secondary" class="capitalize">
-                {{ dataset?.sensitivity }}
-              </Badge>
-            </div>
-
-            <!-- PII -->
-            <div class="space-y-1">
-              <div class="text-sm text-muted-foreground flex items-center gap-1">
-                <Shield class="h-3 w-3" />
-                PII Status
-              </div>
-              <Badge v-if="dataset?.has_pii" variant="destructive">Contains PII</Badge>
-              <Badge v-else variant="outline" class="text-muted-foreground">No PII</Badge>
-            </div>
-
             <!-- Tags -->
-            <div class="space-y-1 md:col-span-2">
+            <div class="space-y-1">
               <div class="text-sm text-muted-foreground flex items-center gap-1">
                 <Tag class="h-3 w-3" />
                 Tags
@@ -294,7 +298,7 @@ watch(() => route.query.refresh, (newRefresh) => {
                 <FileText class="h-5 w-5" />
                 Dataset Versions
                 <Badge v-if="!isLoadingVersions" variant="secondary" class="ml-2">
-                  {{ totalRows }} versions
+                  {{ paginationData.total_rows }} versions
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -380,9 +384,54 @@ watch(() => route.query.refresh, (newRefresh) => {
             </TableBody>
           </Table>
 
-          <!-- Pagination Info -->
-          <div v-if="versions.length > 0" class="mt-4 text-sm text-muted-foreground text-center">
-            แสดง {{ versions.length }} จาก {{ totalRows }} รายการ (หน้า {{ currentPage }} / {{ totalPages }})
+          <!-- Pagination -->
+          <div v-if="paginationData.total_pages > 1" class="flex items-center justify-between mt-4">
+            <div class="text-sm text-muted-foreground">
+              {{ getPaginationInfo.text }}
+            </div>
+            
+            <div class="ml-auto">
+              <Pagination 
+                v-slot="{ page }" 
+                :items-per-page="paginationData.per_page" 
+                :total="paginationData.total_rows" 
+                :default-page="paginationData.page"
+                :sibling-count="1"
+                :show-edges="true"
+                @update:page="goToPage"
+              >
+                <PaginationContent v-slot="{ items }" class="gap-2">
+                  <PaginationPrevious 
+                    :disabled="!canPreviousPage" 
+                    @click="previousPage"
+                  >
+                    ก่อนหน้า
+                  </PaginationPrevious>
+                  
+                  <template v-for="(item, index) in items" :key="index">
+                    <PaginationItem
+                      v-if="item.type === 'page'"
+                      :value="item.value"
+                      :is-active="item.value === page"
+                      @click="goToPage(item.value)"
+                    >
+                      {{ item.value }}
+                    </PaginationItem>
+                    <PaginationEllipsis 
+                      v-else-if="item.type === 'ellipsis'" 
+                      :index="index" 
+                    />
+                  </template>
+                  
+                  <PaginationNext 
+                    :disabled="!canNextPage" 
+                    @click="nextPage"
+                  >
+                    ถัดไป
+                  </PaginationNext>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -209,7 +209,8 @@ const mainTable = ref('')
 const newJoin = ref({
   table: '',
   leftColumn: '',
-  rightColumn: ''
+  rightColumn: '',
+  relation: 'one_to_many'
 })
 
 const steps = [
@@ -904,21 +905,12 @@ const setMainTable = (tableName: string) => {
   const autoJoins = autoGenerateJoins(tableName)
   if (autoJoins.length > 0) {
     setFieldValue('policies.runtime.query.joins', autoJoins)
-    
-    // Show user feedback about auto-generated joins
-    const tableNames = autoJoins.map((join: any) => join.table_to).join(', ')
-    useToast().toast({
-      title: "🤖 Auto-generated table joins",
-      description: `Automatically linked ${autoJoins.length} table(s): ${tableNames}`,
+    showSuccess(`สร้าง ${autoJoins.length} joins สำเร็จ`, {
+      description: 'ตรวจพบความสัมพันธ์อัตโนมัติจาก foreign key'
     })
   } else {
     // Clear existing joins if no auto-joins detected
     setFieldValue('policies.runtime.query.joins', [])
-    useToast().toast({
-      title: "No relationships detected",
-      description: "No foreign key relationships found. You can add manual joins if needed.",
-      variant: "default"
-    })
   }
   
   // Get columns from main table and joined tables for allow_edit
@@ -981,23 +973,8 @@ const setMainTable = (tableName: string) => {
   // If no columns found, wait a bit and retry (reactive data might not be ready)
   if (allEditableColumns.length === 0) {
     setTimeout(() => {
-      const retryColumns = updatePoliciesWithAllColumns()
-      
-      if (retryColumns.length > 0) {
-        useToast().toast({
-          title: "Columns updated",
-          description: `Updated editable columns for ${tableName}: ${retryColumns.length} columns`,
-        })
-      } else {
-        // Don't show error toast immediately - user might still be setting up
-      }
+      updatePoliciesWithAllColumns()
     }, 100) // Small delay to allow reactive updates
-  } else {
-    // Show success when columns are found immediately
-    useToast().toast({
-      title: "✅ Table configured",
-      description: `Found ${allEditableColumns.length} editable columns with ${autoJoins.length} joined table(s)`,
-    })
   }
 }
 
@@ -1012,8 +989,8 @@ const addJoin = () => {
       alias: col.name
     }))
     
-    // Always use many_to_one for simplicity and consistency
-    const relationshipType = 'many_to_one'
+    // Use the selected relation type
+    const relationshipType = newJoin.value.relation
 
     const newJoins = [...currentJoins, {
       type: 'LEFT',
@@ -1031,7 +1008,7 @@ const addJoin = () => {
     setFieldValue('policies.runtime.query.joins', newJoins)
     
     // Reset
-    newJoin.value = { table: '', leftColumn: '', rightColumn: '' }
+    newJoin.value = { table: '', leftColumn: '', rightColumn: '', relation: 'one_to_many' }
   }
 }
 
@@ -1122,32 +1099,6 @@ const availableJoinTables = computed(() => {
   const currentJoins = formData.value.policies?.runtime?.query?.joins || []
   const joinedTables = currentJoins.map((j: any) => j.table_to)
   return availableTables.value.filter(t => t !== mainTable.value && !joinedTables.includes(t))
-})
-
-// Computed property for auto-detection statistics
-const autoDetectionStats = computed(() => {
-  if (!mainTable.value) return null
-  
-  const allRelationships = detectForeignKeyRelationships()
-  const relevantRelationships = allRelationships.filter(rel => 
-    rel.table_from === mainTable.value || rel.table_to === mainTable.value
-  )
-  const highConfidenceRelationships = relevantRelationships.filter(rel => rel.confidence >= 0.75)
-  const currentJoins = formData.value.policies?.runtime?.query?.joins || []
-  
-  return {
-    total: relevantRelationships.length,
-    highConfidence: highConfidenceRelationships.length,
-    implemented: currentJoins.length,
-    patterns: highConfidenceRelationships.map(rel => ({
-      from: rel.table_from,
-      to: rel.table_to,
-      column_from: rel.column_from,
-      column_to: rel.column_to,
-      confidence: Math.round(rel.confidence * 100),
-      pattern: rel.pattern
-    }))
-  }
 })
 
 // Check which steps are completed
@@ -1996,6 +1947,21 @@ onMounted(() => {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <!-- เลือก Relation Type -->
+                  <div v-if="newJoin.table" class="space-y-2">
+                    <Label class="text-sm">Relation Type</Label>
+                    <Select v-model="newJoin.relation">
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือก Relation Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="one_to_many">One to Many</SelectItem>
+                        <SelectItem value="many_to_one">Many to One</SelectItem>
+                        <SelectItem value="one_to_one">One to One</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <Button 

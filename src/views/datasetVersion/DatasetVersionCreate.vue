@@ -209,7 +209,8 @@ const mainTable = ref('')
 const newJoin = ref({
   table: '',
   leftColumn: '',
-  rightColumn: ''
+  rightColumn: '',
+  relation: 'one_to_many'
 })
 
 const steps = [
@@ -988,8 +989,8 @@ const addJoin = () => {
       alias: col.name
     }))
     
-    // Always use many_to_one for simplicity and consistency
-    const relationshipType = 'many_to_one'
+    // Use the selected relation type
+    const relationshipType = newJoin.value.relation
 
     const newJoins = [...currentJoins, {
       type: 'LEFT',
@@ -1007,7 +1008,7 @@ const addJoin = () => {
     setFieldValue('policies.runtime.query.joins', newJoins)
     
     // Reset
-    newJoin.value = { table: '', leftColumn: '', rightColumn: '' }
+    newJoin.value = { table: '', leftColumn: '', rightColumn: '', relation: 'one_to_many' }
   }
 }
 
@@ -1946,6 +1947,21 @@ onMounted(() => {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <!-- เลือก Relation Type -->
+                  <div v-if="newJoin.table" class="space-y-2">
+                    <Label class="text-sm">Relation Type</Label>
+                    <Select v-model="newJoin.relation">
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือก Relation Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="one_to_many">One to Many</SelectItem>
+                        <SelectItem value="many_to_one">Many to One</SelectItem>
+                        <SelectItem value="one_to_one">One to One</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <Button 

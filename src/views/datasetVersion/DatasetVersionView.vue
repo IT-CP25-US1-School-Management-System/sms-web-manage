@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { usePagination } from '@/composables/usePagination'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -45,10 +54,14 @@ const isLoadingDataset = ref(true)
 const isLoadingVersions = ref(true)
 
 // Pagination
-const currentPage = ref(1)
-const totalPages = ref(0)
-const totalRows = ref(0)
-const perPage = ref(10)
+const paginationData = ref({
+  page: 1,
+  per_page: 10,
+  total_pages: 0,
+  total_rows: 0
+})
+
+const { getPaginationInfo, canPreviousPage, canNextPage } = usePagination(paginationData)
 
 // Detail sheet
 const isDetailOpen = ref(false)
@@ -83,15 +96,18 @@ const loadVersions = async () => {
       `/v1/datasets/${datasetId.value}/versions`,
       {
         params: {
-          page: currentPage.value,
-          per_page: perPage.value,
+          page: paginationData.value.page,
+          per_page: paginationData.value.per_page,
         }
       }
     )
     versions.value = response.data.data
-    currentPage.value = response.data.page
-    totalPages.value = response.data.total_pages
-    totalRows.value = response.data.total_rows
+    paginationData.value = {
+      page: response.data.page,
+      per_page: response.data.per_page,
+      total_pages: response.data.total_pages,
+      total_rows: response.data.total_rows
+    }
   } catch (error) {
     console.error('Failed to load versions:', error)
   } finally {
@@ -158,6 +174,25 @@ const handleStatusChange = async () => {
     isChangingStatus.value = false
     showStatusDialog.value = false
     versionToChange.value = null
+  }
+}
+
+const goToPage = (page: number) => {
+  paginationData.value.page = page
+  loadVersions()
+}
+
+const previousPage = () => {
+  if (paginationData.value.page > 1) {
+    paginationData.value.page--
+    loadVersions()
+  }
+}
+
+const nextPage = () => {
+  if (paginationData.value.page < paginationData.value.total_pages) {
+    paginationData.value.page++
+    loadVersions()
   }
 }
 
@@ -263,7 +298,7 @@ watch(() => route.query.refresh, (newRefresh) => {
                 <FileText class="h-5 w-5" />
                 Dataset Versions
                 <Badge v-if="!isLoadingVersions" variant="secondary" class="ml-2">
-                  {{ totalRows }} versions
+                  {{ paginationData.total_rows }} versions
                 </Badge>
               </CardTitle>
               <CardDescription>
@@ -349,9 +384,54 @@ watch(() => route.query.refresh, (newRefresh) => {
             </TableBody>
           </Table>
 
-          <!-- Pagination Info -->
-          <div v-if="versions.length > 0" class="mt-4 text-sm text-muted-foreground text-center">
-            แสดง {{ versions.length }} จาก {{ totalRows }} รายการ (หน้า {{ currentPage }} / {{ totalPages }})
+          <!-- Pagination -->
+          <div v-if="paginationData.total_pages > 1" class="flex items-center justify-between mt-4">
+            <div class="text-sm text-muted-foreground">
+              {{ getPaginationInfo.text }}
+            </div>
+            
+            <div class="ml-auto">
+              <Pagination 
+                v-slot="{ page }" 
+                :items-per-page="paginationData.per_page" 
+                :total="paginationData.total_rows" 
+                :default-page="paginationData.page"
+                :sibling-count="1"
+                :show-edges="true"
+                @update:page="goToPage"
+              >
+                <PaginationContent v-slot="{ items }" class="gap-2">
+                  <PaginationPrevious 
+                    :disabled="!canPreviousPage" 
+                    @click="previousPage"
+                  >
+                    ก่อนหน้า
+                  </PaginationPrevious>
+                  
+                  <template v-for="(item, index) in items" :key="index">
+                    <PaginationItem
+                      v-if="item.type === 'page'"
+                      :value="item.value"
+                      :is-active="item.value === page"
+                      @click="goToPage(item.value)"
+                    >
+                      {{ item.value }}
+                    </PaginationItem>
+                    <PaginationEllipsis 
+                      v-else-if="item.type === 'ellipsis'" 
+                      :index="index" 
+                    />
+                  </template>
+                  
+                  <PaginationNext 
+                    :disabled="!canNextPage" 
+                    @click="nextPage"
+                  >
+                    ถัดไป
+                  </PaginationNext>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         </CardContent>
       </Card>

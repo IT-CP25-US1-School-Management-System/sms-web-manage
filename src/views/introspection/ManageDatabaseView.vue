@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/pagination";
 
 import { dataApiInstance } from "@/stores/api";
-import { DATASET_SENSITIVITY } from "@/lib/constants";
 import type { ApiResponse } from "@/types/dataset";
 import type {
   Database,
@@ -225,36 +224,6 @@ const goToEditDatabase = (database: Database) => {
     name: ROUTE_NAMES.MANAGE_DATABASE_UPDATE,
     params: { id: database.id },
   });
-};
-
-const getSensitivityColor = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC:
-      return "bg-green-100 text-green-800";
-    case DATASET_SENSITIVITY.INTERNAL:
-      return "bg-blue-100 text-blue-800";
-    case DATASET_SENSITIVITY.CONFIDENTIAL:
-      return "bg-orange-100 text-orange-800";
-    case DATASET_SENSITIVITY.RESTRICTED:
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
-
-const getSensitivityText = (sensitivity: string) => {
-  switch (sensitivity) {
-    case DATASET_SENSITIVITY.PUBLIC:
-      return "สาธารณะ";
-    case DATASET_SENSITIVITY.INTERNAL:
-      return "ภายใน";
-    case DATASET_SENSITIVITY.CONFIDENTIAL:
-      return "ความลับ";
-    case DATASET_SENSITIVITY.RESTRICTED:
-      return "จำกัด";
-    default:
-      return "ไม่ระบุ";
-  }
 };
 
 const goToPage = (page: number) => {
@@ -473,7 +442,6 @@ watch(
                 <TableHead class="w-60">ชื่อ Database</TableHead>
                 <TableHead class="w-30">Type</TableHead>
                 <TableHead class="w-30">DB Type</TableHead>
-                <TableHead class="w-30">Sensitivity</TableHead>
                 <TableHead class="w-30">เปิดใช้งาน</TableHead>
                 <TableHead class="w-20">การดำเนินการ</TableHead>
               </TableRow>
@@ -510,16 +478,6 @@ watch(
 
                 <TableCell class="w-30">
                   <span class="text-sm">{{ source.db_type }}</span>
-                </TableCell>
-
-                <TableCell class="w-30">
-                  <Badge
-                    :class="getSensitivityColor(source.sensitivity)"
-                    variant="secondary"
-                    class="text-xs"
-                  >
-                    {{ getSensitivityText(source.sensitivity) }}
-                  </Badge>
                 </TableCell>
                 <TableCell class="w-30">
                   <div class="flex flex-wrap gap-1">

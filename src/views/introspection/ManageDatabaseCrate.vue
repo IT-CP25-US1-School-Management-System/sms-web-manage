@@ -27,13 +27,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { Loader2, Eye, EyeOff } from "lucide-vue-next";
 import { dataApiInstance } from "@/stores/api";
@@ -86,7 +79,7 @@ const { handleSubmit, resetForm: resetVeeForm } = useForm({
     db_type: "postgres",
     host: "",
     port: 5432,
-    sensitivity: DATASET_SENSITIVITY.INTERNAL,
+    sensitivity: DATASET_SENSITIVITY.PUBLIC,
     username: "",
     password: "",
     database_name: "",
@@ -209,19 +202,6 @@ const closeSheet = () => {
             </FormItem>
           </FormField>
 
-          <!-- Type -->
-          <FormField v-slot="{ componentField }" name="type">
-            <FormItem>
-              <FormLabel
-                >Type <span class="text-destructive">*</span></FormLabel
-              >
-              <FormControl>
-                <Input v-bind="componentField" placeholder="เช่น jdbc" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
           <!-- Is Active -->
           <FormField v-slot="{ value }" name="is_active">
             <FormItem>
@@ -298,38 +278,6 @@ const closeSheet = () => {
                   placeholder="5432"
                 />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-
-          <!-- Sensitivity -->
-          <FormField v-slot="{ componentField }" name="sensitivity">
-            <FormItem>
-              <FormLabel
-                >Sensitivity Level
-                <span class="text-destructive">*</span></FormLabel
-              >
-              <Select v-bind="componentField">
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือก Sensitivity Level" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem :value="DATASET_SENSITIVITY.PUBLIC"
-                    >สาธารณะ (Public)</SelectItem
-                  >
-                  <SelectItem :value="DATASET_SENSITIVITY.INTERNAL"
-                    >ภายใน (Internal)</SelectItem
-                  >
-                  <SelectItem :value="DATASET_SENSITIVITY.CONFIDENTIAL"
-                    >ความลับ (Confidential)</SelectItem
-                  >
-                  <SelectItem :value="DATASET_SENSITIVITY.RESTRICTED"
-                    >จำกัด (Restricted)</SelectItem
-                  >
-                </SelectContent>
-              </Select>
               <FormMessage />
             </FormItem>
           </FormField>

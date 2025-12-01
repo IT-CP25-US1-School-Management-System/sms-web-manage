@@ -1100,32 +1100,6 @@ const availableJoinTables = computed(() => {
   return availableTables.value.filter(t => t !== mainTable.value && !joinedTables.includes(t))
 })
 
-// Computed property for auto-detection statistics
-const autoDetectionStats = computed(() => {
-  if (!mainTable.value) return null
-  
-  const allRelationships = detectForeignKeyRelationships()
-  const relevantRelationships = allRelationships.filter(rel => 
-    rel.table_from === mainTable.value || rel.table_to === mainTable.value
-  )
-  const highConfidenceRelationships = relevantRelationships.filter(rel => rel.confidence >= 0.75)
-  const currentJoins = formData.value.policies?.runtime?.query?.joins || []
-  
-  return {
-    total: relevantRelationships.length,
-    highConfidence: highConfidenceRelationships.length,
-    implemented: currentJoins.length,
-    patterns: highConfidenceRelationships.map(rel => ({
-      from: rel.table_from,
-      to: rel.table_to,
-      column_from: rel.column_from,
-      column_to: rel.column_to,
-      confidence: Math.round(rel.confidence * 100),
-      pattern: rel.pattern
-    }))
-  }
-})
-
 // Check which steps are completed
 const isStepCompleted = (step: number): boolean => {
   if (step === 1) {

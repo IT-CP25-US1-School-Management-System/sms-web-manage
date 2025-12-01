@@ -30,7 +30,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { ArrowLeft, HardDrive, Tag, Shield, User, FileText, Plus, MoreHorizontal, Eye, XCircle, CheckCircle, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, HardDrive, Tag, User, FileText, Plus, MoreHorizontal, Eye, XCircle, CheckCircle, Loader2 } from 'lucide-vue-next'
 import { ROUTE_NAMES } from '@/lib/constants'
 import { dataApiInstance } from '@/stores/api'
 import type { Dataset, DatasetVersion, DatasetVersionSearchResponse } from '@/types/dataset'

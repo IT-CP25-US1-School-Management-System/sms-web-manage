@@ -904,21 +904,12 @@ const setMainTable = (tableName: string) => {
   const autoJoins = autoGenerateJoins(tableName)
   if (autoJoins.length > 0) {
     setFieldValue('policies.runtime.query.joins', autoJoins)
-    
-    // Show user feedback about auto-generated joins
-    const tableNames = autoJoins.map((join: any) => join.table_to).join(', ')
-    useToast().toast({
-      title: "🤖 Auto-generated table joins",
-      description: `Automatically linked ${autoJoins.length} table(s): ${tableNames}`,
+    showSuccess(`สร้าง ${autoJoins.length} joins สำเร็จ`, {
+      description: 'ตรวจพบความสัมพันธ์อัตโนมัติจาก foreign key'
     })
   } else {
     // Clear existing joins if no auto-joins detected
     setFieldValue('policies.runtime.query.joins', [])
-    useToast().toast({
-      title: "No relationships detected",
-      description: "No foreign key relationships found. You can add manual joins if needed.",
-      variant: "default"
-    })
   }
   
   // Get columns from main table and joined tables for allow_edit
@@ -981,23 +972,8 @@ const setMainTable = (tableName: string) => {
   // If no columns found, wait a bit and retry (reactive data might not be ready)
   if (allEditableColumns.length === 0) {
     setTimeout(() => {
-      const retryColumns = updatePoliciesWithAllColumns()
-      
-      if (retryColumns.length > 0) {
-        useToast().toast({
-          title: "Columns updated",
-          description: `Updated editable columns for ${tableName}: ${retryColumns.length} columns`,
-        })
-      } else {
-        // Don't show error toast immediately - user might still be setting up
-      }
+      updatePoliciesWithAllColumns()
     }, 100) // Small delay to allow reactive updates
-  } else {
-    // Show success when columns are found immediately
-    useToast().toast({
-      title: "✅ Table configured",
-      description: `Found ${allEditableColumns.length} editable columns with ${autoJoins.length} joined table(s)`,
-    })
   }
 }
 

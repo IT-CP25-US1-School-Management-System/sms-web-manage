@@ -46,12 +46,6 @@ dist-ssr/
 build/
 *.local
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.test
-.env.production
 
 # OS generated files
 .DS_Store

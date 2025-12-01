@@ -3,7 +3,7 @@ import { useAuthStore } from "@/stores/auth";
 import { ROUTE_NAMES } from "@/lib/constants";
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: "/login",
@@ -38,13 +38,15 @@ const router = createRouter({
         {
           path: "/database/create",
           name: ROUTE_NAMES.MANAGE_DATABASE_CREATE,
-          component: () => import("@/views/introspection/ManageDatabaseCrate.vue"),
+          component: () =>
+            import("@/views/introspection/ManageDatabaseCrate.vue"),
           meta: { requiresAuth: true },
         },
-          {
+        {
           path: "/database/:id/edit",
           name: ROUTE_NAMES.MANAGE_DATABASE_UPDATE,
-          component: () => import("@/views/introspection/ManageDatabaseUpdate.vue"),
+          component: () =>
+            import("@/views/introspection/ManageDatabaseUpdate.vue"),
           meta: { requiresAuth: true },
         },
       ],
@@ -84,7 +86,8 @@ const router = createRouter({
         {
           path: "create",
           name: ROUTE_NAMES.DATASET_VERSION_CREATE,
-          component: () => import("@/views/datasetVersion/DatasetVersionCreate.vue"),
+          component: () =>
+            import("@/views/datasetVersion/DatasetVersionCreate.vue"),
           meta: { requiresAuth: true },
         },
       ],
@@ -104,14 +107,14 @@ const router = createRouter({
       name: ROUTE_NAMES.USERS,
       component: () => import("@/views/users/UsersView.vue"),
       meta: { requiresAuth: true },
-       children: [
+      children: [
         {
           path: "assign-roles",
           name: ROUTE_NAMES.USERS_ASSIGN_ROLES,
           component: () => import("@/views/users/AssignRoleModal.vue"),
           meta: { requiresAuth: true },
         },
-           {
+        {
           path: "userdetail",
           name: ROUTE_NAMES.USER_DETAIL,
           component: () => import("@/views/users/UserDetail.vue"),

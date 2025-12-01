@@ -99,16 +99,6 @@ const loadVersions = async () => {
   }
 }
 
-const getSensitivityColor = (sensitivity: string) => {
-  const colors = {
-    public: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    internal: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    confidential: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-    restricted: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  }
-  return colors[sensitivity as keyof typeof colors] || ''
-}
-
 const getStatusColor = (status: string) => {
   const colors = {
     draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -224,10 +214,10 @@ watch(() => route.query.refresh, (newRefresh) => {
           </div>
         </CardHeader>
         <CardContent>
-          <div v-if="isLoadingDataset" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Skeleton v-for="i in 4" :key="i" class="h-16 w-full" />
+          <div v-if="isLoadingDataset" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton v-for="i in 3" :key="i" class="h-16 w-full" />
           </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Domain -->
             <div class="space-y-1">
               <div class="text-sm text-muted-foreground flex items-center gap-1">
@@ -247,29 +237,8 @@ watch(() => route.query.refresh, (newRefresh) => {
               <div class="text-sm font-medium">{{ dataset?.owner || '-' }}</div>
             </div>
 
-            <!-- Sensitivity -->
-            <div class="space-y-1">
-              <div class="text-sm text-muted-foreground flex items-center gap-1">
-                <Shield class="h-3 w-3" />
-                Sensitivity
-              </div>
-              <Badge :class="getSensitivityColor(dataset?.sensitivity || '')" variant="secondary" class="capitalize">
-                {{ dataset?.sensitivity }}
-              </Badge>
-            </div>
-
-            <!-- PII -->
-            <div class="space-y-1">
-              <div class="text-sm text-muted-foreground flex items-center gap-1">
-                <Shield class="h-3 w-3" />
-                PII Status
-              </div>
-              <Badge v-if="dataset?.has_pii" variant="destructive">Contains PII</Badge>
-              <Badge v-else variant="outline" class="text-muted-foreground">No PII</Badge>
-            </div>
-
             <!-- Tags -->
-            <div class="space-y-1 md:col-span-2">
+            <div class="space-y-1">
               <div class="text-sm text-muted-foreground flex items-center gap-1">
                 <Tag class="h-3 w-3" />
                 Tags

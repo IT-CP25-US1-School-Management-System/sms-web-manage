@@ -259,7 +259,7 @@ const closeSheet = () => {
           <FormField v-slot="{ componentField }" name="db_type">
             <FormItem>
               <FormLabel
-                >Database Type
+                >Database Product
                 <span class="text-destructive">*</span></FormLabel
               >
               <FormControl>

@@ -184,7 +184,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
         <!-- Domain -->
         <FormField v-slot="{ componentField }" name="domain">
           <FormItem>
-            <FormLabel>Domain <span class="text-red-500">*</span></FormLabel>
+            <FormLabel>Category <span class="text-red-500">*</span></FormLabel>
             <FormControl>
               <Input
                 v-bind="componentField"

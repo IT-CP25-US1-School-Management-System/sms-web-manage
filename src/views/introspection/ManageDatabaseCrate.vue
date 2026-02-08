@@ -163,7 +163,7 @@ const closeSheet = () => {
           กรอกข้อมูลเพื่อสร้าง database ใหม่ในระบบ
         </SheetDescription>
       </SheetHeader>
-      <div class="flex-1 overflow-y-auto px-6 py-6">
+      <div class="flex-1 overflow-y-auto px-6 pb-6 pt-2">
         <!-- Form Card -->
         <form
           id="createDatabaseForm"

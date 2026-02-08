@@ -69,7 +69,7 @@ const menuConfig: {
   main: [
     {
       id: "home",
-      label: "แดชบอร์ด",
+      label: "หน้าหลัก",
       icon: Home,
       routeName: ROUTE_NAMES.HOME,
       children: null,

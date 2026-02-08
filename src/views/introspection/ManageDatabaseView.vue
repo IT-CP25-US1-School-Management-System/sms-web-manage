@@ -78,7 +78,7 @@ const newActiveState = ref<boolean>(false);
 
 const paginationData = ref({
   page: 1,
-  per_page: 10,
+  per_page: 7,
   total_pages: 0,
   total_rows: 0,
 });
@@ -350,7 +350,7 @@ watch(
         </router-link>
       </div>
 
-      <!-- Search and Filter -->
+      <!-- Datasets Table -->
       <Card>
         <CardHeader>
           <div class="flex items-center gap-4">
@@ -365,7 +365,11 @@ watch(
                 @keyup.enter="handleSearch"
               />
             </div>
-            <Button @click="handleSearch" :disabled="isLoading" class="cursor-pointer">
+            <Button
+              @click="handleSearch"
+              :disabled="isLoading"
+              class="cursor-pointer"
+            >
               <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin mr-2" />
               ค้นหา
             </Button>
@@ -380,16 +384,6 @@ watch(
               ล้าง
             </Button>
           </div>
-        </CardHeader>
-      </Card>
-
-      <!-- Datasets Table -->
-      <Card>
-        <CardHeader>
-          <CardTitle>รายการ Database</CardTitle>
-          <CardDescription>
-            จัดการและดูรายละเอียดฐานข้อมูลทั้งหมด
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <!-- Loading state -->
@@ -524,7 +518,6 @@ watch(
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-
                 </TableCell>
               </TableRow>
             </TableBody>

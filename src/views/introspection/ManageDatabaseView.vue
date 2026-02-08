@@ -5,13 +5,7 @@ import { usePagination } from "@/composables/usePagination";
 
 import MainLayout from "@/layouts/MainLayout.vue";
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -94,14 +88,14 @@ onMounted(() => {
 
 // API functions
 const getDatabases = async (
-  params?: DatabaseSearchParams
+  params?: DatabaseSearchParams,
 ): Promise<DatabaseSearchResponse> => {
   try {
     const response = await dataApiInstance.get<DatabaseSearchResponse>(
       "/v1/introspect/sources",
       {
         params,
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
@@ -115,7 +109,7 @@ const getDatabases = async (
 const deleteDatabase = async (id: string): Promise<ApiResponse<any>> => {
   try {
     const response = await dataApiInstance.delete<ApiResponse<any>>(
-      `/v1/introspect/sources/${id}`
+      `/v1/introspect/sources/${id}`,
     );
     return response.data;
   } catch (error: any) {
@@ -135,7 +129,7 @@ const deleteDatabase = async (id: string): Promise<ApiResponse<any>> => {
 const updateIsActive = async (source_id: string, active: string) => {
   try {
     const response = await dataApiInstance.patch(
-      `/v1/introspect/sources/${source_id}/${active}`
+      `/v1/introspect/sources/${source_id}/${active}`,
     );
     return response;
   } catch (error: any) {
@@ -327,7 +321,7 @@ watch(
     ) {
       loadDatasets();
     }
-  }
+  },
 );
 </script>
 

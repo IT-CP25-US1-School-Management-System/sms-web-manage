@@ -38,6 +38,7 @@ import {
   ChevronRight,
   HardDrive,
   Users,
+  FileText,
 } from "lucide-vue-next";
 
 import { getImgInitials } from "@/lib/helpers";
@@ -93,6 +94,13 @@ const menuConfig: {
       label: "จัดการผู้ใช้งาน",
       icon: Users,
       routeName: ROUTE_NAMES.USERS,
+      children: null,
+    },
+    {
+      id: "documents",
+      label: "จัดการเอกสาร",
+      icon: FileText,
+      routeName: ROUTE_NAMES.DOCUMENTS,
       children: null,
     },
 

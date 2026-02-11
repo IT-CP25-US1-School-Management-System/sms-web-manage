@@ -24,6 +24,9 @@ export const ROUTE_NAMES = {
   ROLES_CREATE: "RolesCreate",
   ROLES_UPDATE: "RolesUpdate",
   USER_DETAIL: "UserDetail",
+  // Document Management
+  DOCUMENTS: "Documents",
+  DOCUMENTS_DETAIL: "DocumentsDetail",
 } as const;
 
 export const DATASET_SENSITIVITY = {

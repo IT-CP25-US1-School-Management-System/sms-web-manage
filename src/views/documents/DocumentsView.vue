@@ -340,10 +340,12 @@ const openUploadDialog = () => {
 
 const validateFileForCurrentPath = (file: File) => {
   const maxSize = currentPath.value?.maximum_size_mb || 10;
-  const allowedTypes = currentPath.value?.mime_type
-    ?.split(",")
-    .map((type) => type.trim())
-    .filter(Boolean);
+  const mimeType = currentPath.value?.mime_type?.trim();
+  
+  // If mime_type is "*", allow all file types
+  const allowedTypes = (mimeType && mimeType !== "*")
+    ? mimeType.split(",").map((type) => type.trim()).filter(Boolean)
+    : undefined;
 
   return validateFile(file, {
     maxSizeMB: maxSize,
@@ -480,30 +482,49 @@ const handleDelete = async () => {
   isDeleting.value = true;
   
   try {
+    // Perform delete
     if (deleteType.value === "path") {
       await deletePath((itemToDelete.value as PathResponse).id);
-      showSuccess("ลบ Path สำเร็จ");
-      loadPaths();
     } else if (deleteType.value === "folder") {
       await deleteFolder((itemToDelete.value as FolderResponse).id);
-      showSuccess("ลบ Folder สำเร็จ");
-      if (currentPath.value) {
-        loadFolders(currentPath.value.id);
-      }
     } else if (deleteType.value === "resource") {
       await deleteResource((itemToDelete.value as ResourceListItem).resource_id);
-      showSuccess("ลบไฟล์สำเร็จ");
-      if (currentFolder.value) {
-        loadResources(currentFolder.value.id);
-      }
     }
+    
+    // Delete successful - show message and close dialog
+    const successMsg = 
+      deleteType.value === "path" ? "ลบ Path สำเร็จ" :
+      deleteType.value === "folder" ? "ลบ Folder สำเร็จ" :
+      "ลบไฟล์สำเร็จ";
+    showSuccess(successMsg);
     
     showDeleteDialog.value = false;
     itemToDelete.value = null;
+    isDeleting.value = false;
+    
+    // Reload data
+    if (deleteType.value === "path") {
+      await loadPaths();
+    } else if (deleteType.value === "folder" && currentPath.value) {
+      await loadFolders(currentPath.value.id);
+    } else if (deleteType.value === "resource" && currentFolder.value) {
+      await loadResources(currentFolder.value.id);
+    }
   } catch (error: any) {
-    const message = error.response?.data?.error?.message || "ไม่สามารถลบได้";
+    console.error("Delete error:", error);
+    
+    let message = "ไม่สามารถลบได้";
+    if (error?.response?.data?.error) {
+      if (typeof error.response.data.error === 'string') {
+        message = error.response.data.error;
+      } else if (error.response.data.error.message) {
+        message = error.response.data.error.message;
+      }
+    } else if (error?.message) {
+      message = error.message;
+    }
+    
     showError(message);
-  } finally {
     isDeleting.value = false;
   }
 };

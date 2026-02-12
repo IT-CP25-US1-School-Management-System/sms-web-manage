@@ -160,9 +160,12 @@ const validateAndSetFile = (file: File) => {
 
   // Validate based on selected path settings
   const maxSize = selectedPath.value?.maximum_size_mb || 10;
-  const allowedTypes = selectedPath.value?.mime_type
-    ?.split(",")
-    .map((t) => t.trim());
+  const mimeType = selectedPath.value?.mime_type?.trim();
+  
+  // If mime_type is "*", allow all file types
+  const allowedTypes = (mimeType && mimeType !== "*") 
+    ? mimeType.split(",").map((t) => t.trim())
+    : undefined;
 
   const validation = validateFile(file, {
     maxSizeMB: maxSize,
@@ -290,10 +293,12 @@ watch(selectedPathId, handlePathChange);
             </SelectTrigger>
             <SelectContent>
               <SelectItem v-for="path in paths" :key="path.id" :value="path.id">
-                {{ path.name }}
-                <span v-if="path.description" class="text-muted-foreground">
-                  - {{ path.description }}
-                </span>
+                <div class="max-w-full">
+                  <span>{{ path.name }}</span>
+                  <span v-if="path.description" class="text-muted-foreground block truncate">
+                    - {{ path.description }}
+                  </span>
+                </div>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -302,7 +307,7 @@ watch(selectedPathId, handlePathChange);
             class="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
           >
             <p>ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB</p>
-            <p v-if="selectedPath.mime_type" class="break-words leading-relaxed">
+            <p v-if="selectedPath.mime_type" class="break-words break-all overflow-wrap-anywhere leading-relaxed">
               ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
             </p>
           </div>
@@ -349,7 +354,7 @@ watch(selectedPathId, handlePathChange);
             class="mt-1 space-y-1 text-xs text-muted-foreground"
           >
             <p>ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB</p>
-            <p v-if="selectedPath.mime_type" class="break-words leading-relaxed">
+            <p v-if="selectedPath.mime_type" class="break-words break-all overflow-wrap-anywhere leading-relaxed">
               ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
             </p>
           </div>
@@ -409,9 +414,9 @@ watch(selectedPathId, handlePathChange);
           </div>
 
           <!-- File Error -->
-          <div v-if="fileError" class="flex items-center gap-2 text-destructive">
-            <AlertCircle class="h-4 w-4" />
-            <p class="text-sm">{{ fileError }}</p>
+          <div v-if="fileError" class="flex items-start gap-2 text-destructive">
+            <AlertCircle class="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <p class="text-sm break-words">{{ fileError }}</p>
           </div>
         </div>
 

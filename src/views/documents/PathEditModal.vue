@@ -80,7 +80,7 @@ const handleSubmit = async () => {
     await updatePath(props.path.id, {
       name: formData.value.name?.trim() || undefined,
       description: formData.value.description?.trim() || undefined,
-      mime_type: formData.value.mime_type?.trim() || undefined,
+      mime_type: formData.value.mime_type?.trim() || "*",
       maximum_size_mb: formData.value.maximum_size_mb || undefined,
       is_generate_filename: formData.value.is_generate_filename,
       roles: formData.value.roles || [],

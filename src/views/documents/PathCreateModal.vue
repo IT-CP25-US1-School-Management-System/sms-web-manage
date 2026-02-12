@@ -90,7 +90,7 @@ const handleSubmit = async () => {
       name: formData.value.name.trim(),
       bucket_name: formData.value.bucket_name.trim(),
       description: formData.value.description?.trim() || undefined,
-      mime_type: formData.value.mime_type?.trim() || undefined,
+      mime_type: formData.value.mime_type?.trim() || "*",
       maximum_size_mb: formData.value.maximum_size_mb || 10,
       is_generate_filename: formData.value.is_generate_filename,
       roles: formData.value.roles || [],

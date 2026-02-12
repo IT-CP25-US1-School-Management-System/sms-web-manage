@@ -66,7 +66,7 @@ const validateForm = (): boolean => {
     errors.value.folder = "กรุณากรอกชื่อ Folder";
   } else if (!/^[a-z0-9-_/]+$/.test(formData.value.folder)) {
     errors.value.folder =
-      "ชื่อ Folder ต้องเป็นตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น และสามารถมี / เพื่อสร้างโฟลเดอร์ย่อยได้";
+      "ชื่อ Folder ต้องเป็นตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น";
   }
 
   return Object.keys(errors.value).length === 0;

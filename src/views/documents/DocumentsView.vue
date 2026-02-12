@@ -92,6 +92,7 @@ import DocumentUploadModal from "./DocumentUploadModal.vue";
 import PathCreateModal from "./PathCreateModal.vue";
 import PathEditModal from "./PathEditModal.vue";
 import FolderCreateModal from "./FolderCreateModal.vue";
+import FolderEditModal from "./FolderEditModal.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -129,6 +130,7 @@ const showUploadDialog = ref(false);
 const showPathCreateDialog = ref(false);
 const showPathEditDialog = ref(false);
 const showFolderCreateDialog = ref(false);
+const showFolderEditDialog = ref(false);
 const showDeleteDialog = ref(false);
 
 // Delete state
@@ -138,6 +140,7 @@ const isDeleting = ref(false);
 
 // Edit state
 const pathToEdit = ref<PathResponse | null>(null);
+const folderToEdit = ref<FolderResponse | null>(null);
 
 // Computed
 const filteredItems = computed(() => {
@@ -466,6 +469,20 @@ const handleFolderCreateSuccess = () => {
   }
 };
 
+const openFolderEdit = (folder: FolderResponse) => {
+  folderToEdit.value = folder;
+  showFolderEditDialog.value = true;
+};
+
+const handleFolderEditSuccess = () => {
+  showFolderEditDialog.value = false;
+  folderToEdit.value = null;
+  showSuccess("อัปเดต Folder สำเร็จ");
+  if (currentPath.value) {
+    loadFolders(currentPath.value.id);
+  }
+};
+
 // Delete
 const confirmDelete = (
   type: "path" | "folder" | "resource",
@@ -514,14 +531,18 @@ const handleDelete = async () => {
     console.error("Delete error:", error);
     
     let message = "ไม่สามารถลบได้";
-    if (error?.response?.data?.error) {
-      if (typeof error.response.data.error === 'string') {
-        message = error.response.data.error;
-      } else if (error.response.data.error.message) {
+    
+    // Extract error message from backend response
+    if (error?.response?.data) {
+      if (error.response.data.error?.message) {
         message = error.response.data.error.message;
+      } else if (typeof error.response.data.error === 'string') {
+        message = error.response.data.error;
+      } else if (error.response.data.message) {
+        message = error.response.data.message;
+      } else if (error.response.data.detail) {
+        message = error.response.data.detail;
       }
-    } else if (error?.message) {
-      message = error.message;
     }
     
     showError(message);
@@ -949,6 +970,10 @@ watch(
                         <FolderOpen class="h-4 w-4 mr-2" />
                         เปิด
                       </DropdownMenuItem>
+                      <DropdownMenuItem @click="openFolderEdit(folder)">
+                        <Settings class="h-4 w-4 mr-2" />
+                        แก้ไข
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         @click="confirmDelete('folder', folder)"
@@ -1094,6 +1119,12 @@ watch(
       :paths="currentPath ? [currentPath] : paths"
       :default-path-id="currentPath?.id"
       @success="handleFolderCreateSuccess"
+    />
+
+    <FolderEditModal
+      v-model:open="showFolderEditDialog"
+      :folder="folderToEdit"
+      @success="handleFolderEditSuccess"
     />
 
     <!-- Delete Confirmation -->

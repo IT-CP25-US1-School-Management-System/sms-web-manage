@@ -212,7 +212,7 @@ watch(
             :disabled="isSubmitting"
           />
           <p class="text-xs text-muted-foreground">
-            คั่นด้วย comma (ว่างไว้ = อนุญาตทุกประเภท)
+            คั่นด้วย comma (ว่างไว้ = อนุญาตทุกประเภท | *)
           </p>
         </div>
 
@@ -246,7 +246,7 @@ watch(
             </p>
           </div>
           <Switch
-            v-model:checked="formData.is_generate_filename"
+          v-model="formData.is_generate_filename"
             :disabled="isSubmitting"
           />
         </div>

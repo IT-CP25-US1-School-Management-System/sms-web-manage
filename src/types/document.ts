@@ -39,10 +39,21 @@ export interface FileResponse {
   url: string;
   original_filename: string;
   storage_filename: string;
-  object_name: string;
+  object_name?: string;
   content_type: string;
-  extension: string;
+  extension?: string;
   size: number;
+  created_at?: string;
+  metadata?: MetadataInfo;
+  folder?: {
+    id: string;
+    folder: string;
+    path?: {
+      id: string;
+      name: string;
+      bucket_name: string;
+    };
+  };
 }
 
 export interface FileWithMetadataResponse extends FileResponse {
@@ -81,6 +92,7 @@ export interface PathResponse {
   mime_type?: string;
   maximum_size_mb?: number;
   is_generate_filename?: boolean;
+  roles?: string[];
   created_at?: string;
   folders?: FolderResponse[];
 }
@@ -92,6 +104,7 @@ export interface CreatePathRequest {
   mime_type?: string;
   maximum_size_mb?: number;
   is_generate_filename?: boolean;
+  roles?: string[];
 }
 
 export interface UpdatePathRequest {
@@ -100,6 +113,7 @@ export interface UpdatePathRequest {
   mime_type?: string;
   maximum_size_mb?: number;
   is_generate_filename?: boolean;
+  roles?: string[];
 }
 
 // =====================

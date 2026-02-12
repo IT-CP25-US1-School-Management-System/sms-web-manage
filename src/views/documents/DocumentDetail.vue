@@ -23,6 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ROUTE_NAMES } from "@/lib/constants";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 import {
   AlertDialog,
@@ -38,7 +46,6 @@ import {
 import {
   Loader2,
   AlertCircle,
-  ArrowLeft,
   Download,
   Trash2,
   FileText,
@@ -49,6 +56,9 @@ import {
   File,
   Save,
   ExternalLink,
+  HardDrive,
+  FolderOpen,
+  ChevronRight,
 } from "lucide-vue-next";
 
 import { useRouter, useRoute } from "vue-router";
@@ -133,6 +143,79 @@ const getStatusLabel = (status?: string) => {
   }
 };
 
+const breadcrumbPathName = computed(() => {
+  if (typeof route.query.pathName === "string" && route.query.pathName) {
+    return route.query.pathName;
+  }
+
+  return resource.value?.folder?.path?.name || "-";
+});
+
+const breadcrumbFolderName = computed(() => {
+  if (typeof route.query.folderName === "string" && route.query.folderName) {
+    return route.query.folderName;
+  }
+
+  return resource.value?.folder?.folder || "-";
+});
+
+const breadcrumbFileName = computed(() => {
+  if (typeof route.query.fileName === "string" && route.query.fileName) {
+    return route.query.fileName;
+  }
+
+  return resource.value?.original_filename || "ไฟล์";
+});
+
+const breadcrumbPathId = computed(() => {
+  if (typeof route.query.pathId === "string" && route.query.pathId) {
+    return route.query.pathId;
+  }
+  return resource.value?.folder?.path?.id || "";
+});
+
+const breadcrumbFolderId = computed(() => {
+  if (typeof route.query.folderId === "string" && route.query.folderId) {
+    return route.query.folderId;
+  }
+  return resource.value?.folder?.id || "";
+});
+
+const displayExtension = computed(() => {
+  if (!resource.value) return "-";
+
+  const ext = (resource.value.extension || "").trim().replace(/^\./, "");
+  if (ext) return ext;
+
+  const filename = resource.value.original_filename || "";
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot > 0 && lastDot < filename.length - 1) {
+    return filename.slice(lastDot + 1).toLowerCase();
+  }
+
+  const subtype = resource.value.content_type?.split("/")?.[1]?.split(";")?.[0];
+  if (subtype && subtype !== "octet-stream") return subtype;
+
+  return "-";
+});
+
+const displayObjectPath = computed(() => {
+  if (!resource.value) return "-";
+
+  if (resource.value.object_name) return resource.value.object_name;
+
+  const bucket =
+    resource.value.folder?.path?.bucket_name || resource.value.folder?.path?.name;
+  const folderName = resource.value.folder?.folder;
+  const filename = resource.value.storage_filename;
+
+  const parts = [bucket, folderName, filename].filter(
+    (part): part is string => Boolean(part)
+  );
+
+  return parts.length > 0 ? parts.join("/") : "-";
+});
+
 // Lifecycle
 onMounted(() => {
   loadResource();
@@ -149,12 +232,14 @@ const loadResource = async () => {
     const result = await getResourceById(resourceId.value);
     resource.value = result;
 
-    // Note: The API might return metadata in a different structure
-    // Adjust based on actual API response
-    if ((result as any).metadata) {
-      metadata.value = (result as any).metadata;
+    if (result.metadata) {
+      metadata.value = result.metadata;
       editDescription.value = metadata.value?.description || "";
       editStatus.value = metadata.value?.status || "";
+    } else {
+      metadata.value = {
+        created_at: result.created_at,
+      };
     }
   } catch (error: any) {
     console.error("Error loading resource:", error);
@@ -170,7 +255,56 @@ const loadResource = async () => {
 
 // Actions
 const goBack = () => {
+  if (breadcrumbPathId.value && breadcrumbFolderId.value) {
+    router.push({
+      name: ROUTE_NAMES.DOCUMENTS,
+      query: {
+        pathId: breadcrumbPathId.value,
+        folderId: breadcrumbFolderId.value,
+      },
+    });
+    return;
+  }
+
+  if (window.history.length > 1) {
+    router.back();
+    return;
+  }
+
   router.push({ name: ROUTE_NAMES.DOCUMENTS });
+};
+
+const goToDocuments = () => {
+  router.push({ name: ROUTE_NAMES.DOCUMENTS });
+};
+
+const goToPathLevel = () => {
+  if (!breadcrumbPathId.value) {
+    goToDocuments();
+    return;
+  }
+
+  router.push({
+    name: ROUTE_NAMES.DOCUMENTS,
+    query: {
+      pathId: breadcrumbPathId.value,
+    },
+  });
+};
+
+const goToFolderLevel = () => {
+  if (!breadcrumbPathId.value || !breadcrumbFolderId.value) {
+    goToPathLevel();
+    return;
+  }
+
+  router.push({
+    name: ROUTE_NAMES.DOCUMENTS,
+    query: {
+      pathId: breadcrumbPathId.value,
+      folderId: breadcrumbFolderId.value,
+    },
+  });
 };
 
 const downloadFile = () => {
@@ -233,16 +367,11 @@ const handleDelete = async () => {
     <div class="flex-1 space-y-6 p-6">
       <!-- Header -->
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <Button variant="ghost" size="icon" @click="goBack">
-            <ArrowLeft class="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 class="text-3xl font-bold tracking-tight">รายละเอียดเอกสาร</h1>
-            <p class="text-muted-foreground mt-2">
-              ดูและจัดการข้อมูลเอกสาร
-            </p>
-          </div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">รายละเอียดเอกสาร</h1>
+          <p class="text-muted-foreground mt-2">
+            ดูและจัดการข้อมูลเอกสาร
+          </p>
         </div>
         <div class="flex gap-2" v-if="resource">
           <Button variant="outline" @click="openInNewTab">
@@ -259,6 +388,61 @@ const handleDelete = async () => {
           </Button>
         </div>
       </div>
+
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              as="button"
+              class="flex items-center gap-1 hover:text-foreground"
+              @click="goToDocuments"
+            >
+              <HardDrive class="h-4 w-4" />
+              Paths
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator>
+            <ChevronRight class="h-4 w-4" />
+          </BreadcrumbSeparator>
+
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              as="button"
+              class="flex items-center gap-1 hover:text-foreground"
+              @click="goToPathLevel"
+            >
+              <FolderOpen class="h-4 w-4" />
+              {{ breadcrumbPathName }}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator>
+            <ChevronRight class="h-4 w-4" />
+          </BreadcrumbSeparator>
+
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              as="button"
+              class="flex items-center gap-1 hover:text-foreground"
+              @click="goToFolderLevel"
+            >
+              <FolderOpen class="h-4 w-4" />
+              {{ breadcrumbFolderName }}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator>
+            <ChevronRight class="h-4 w-4" />
+          </BreadcrumbSeparator>
+
+          <BreadcrumbItem>
+            <BreadcrumbPage class="max-w-[360px] truncate">
+              {{ breadcrumbFileName }}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <!-- Loading state -->
       <div v-if="isLoading" class="space-y-4">
@@ -329,7 +513,7 @@ const handleDelete = async () => {
               </div>
               <div>
                 <Label class="text-muted-foreground">นามสกุล</Label>
-                <p>.{{ resource.extension }}</p>
+                <p>{{ displayExtension === "-" ? "-" : `.${displayExtension}` }}</p>
               </div>
               <div>
                 <Label class="text-muted-foreground">ชื่อไฟล์ใน Storage</Label>
@@ -338,7 +522,7 @@ const handleDelete = async () => {
               <div class="col-span-2">
                 <Label class="text-muted-foreground">Object Path</Label>
                 <p class="font-mono text-sm break-all">
-                  {{ resource.object_name }}
+                  {{ displayObjectPath }}
                 </p>
               </div>
             </div>

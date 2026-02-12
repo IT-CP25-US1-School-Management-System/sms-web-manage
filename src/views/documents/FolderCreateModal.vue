@@ -64,9 +64,9 @@ const validateForm = (): boolean => {
 
   if (!formData.value.folder.trim()) {
     errors.value.folder = "กรุณากรอกชื่อ Folder";
-  } else if (!/^[a-z0-9-_]+$/.test(formData.value.folder)) {
+  } else if (!/^[a-z0-9-_/]+$/.test(formData.value.folder)) {
     errors.value.folder =
-      "ชื่อ Folder ต้องเป็นตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น";
+      "ชื่อ Folder ต้องเป็นตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น และสามารถมี / เพื่อสร้างโฟลเดอร์ย่อยได้";
   }
 
   return Object.keys(errors.value).length === 0;
@@ -118,7 +118,7 @@ watch(
     } else {
       resetForm();
     }
-  }
+  },
 );
 
 watch(
@@ -127,7 +127,7 @@ watch(
     if (props.open && newValue) {
       formData.value.path_id = newValue;
     }
-  }
+  },
 );
 </script>
 
@@ -176,7 +176,8 @@ watch(
             {{ errors.folder }}
           </p>
           <p class="text-xs text-muted-foreground">
-            ใช้ตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น
+            ใช้ตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น และสามารถมี /
+            เพื่อสร้างโฟลเดอร์ย่อยได้
           </p>
         </div>
       </div>

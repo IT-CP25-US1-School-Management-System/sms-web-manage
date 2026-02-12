@@ -26,7 +26,6 @@ import { Upload, Loader2, X, FileText, AlertCircle } from "lucide-vue-next";
 
 import type { PathResponse, FolderResponse } from "@/types/document";
 import {
-  uploadDocument,
   createResource,
   listPaths,
   listFolders,
@@ -52,7 +51,6 @@ const selectedFile = ref<File | null>(null);
 const selectedPathId = ref<string>("");
 const selectedFolderId = ref<string>("");
 const description = ref("");
-const uploadMode = ref<"simple" | "with-metadata">("simple");
 
 // State
 const paths = ref<PathResponse[]>([]);
@@ -208,19 +206,12 @@ const handleSubmit = async () => {
       }
     }, 200);
 
-    if (uploadMode.value === "simple") {
-      await uploadDocument(selectedFile.value, {
-        path: selectedPath.value.name,
-        folder: selectedFolder.folder,
-      });
-    } else {
-      await createResource(selectedFile.value, {
-        path: selectedPath.value.name,
-        folder: selectedFolder.folder,
-        uploaded_by: "current-user", // TODO: Get from auth store
-        description: description.value || undefined,
-      });
-    }
+    await createResource(selectedFile.value, {
+      path: selectedPath.value.name,
+      folder: selectedFolder.folder,
+      uploaded_by: "current-user", // TODO: Get from auth store
+      description: description.value || undefined,
+    });
 
     clearInterval(progressInterval);
     uploadProgress.value = 100;
@@ -290,22 +281,6 @@ watch(selectedPathId, handlePathChange);
       </div>
 
       <div v-else class="space-y-4 py-4">
-        <!-- Upload Mode Selection -->
-        <div class="space-y-2">
-          <Label>โหมดการอัปโหลด</Label>
-          <Select v-model="uploadMode">
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="simple">อัปโหลดแบบง่าย</SelectItem>
-              <SelectItem value="with-metadata">
-                อัปโหลดพร้อม Metadata
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <!-- Path Selection (hidden if defaults provided) -->
         <div v-if="!hasDefaults" class="space-y-2">
           <Label>Path *</Label>
@@ -322,12 +297,15 @@ watch(selectedPathId, handlePathChange);
               </SelectItem>
             </SelectContent>
           </Select>
-          <p v-if="selectedPath" class="text-xs text-muted-foreground">
-            ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB
-            <span v-if="selectedPath.mime_type">
-              | ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
-            </span>
-          </p>
+          <div
+            v-if="selectedPath"
+            class="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          >
+            <p>ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB</p>
+            <p v-if="selectedPath.mime_type" class="break-words leading-relaxed">
+              ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
+            </p>
+          </div>
         </div>
 
         <!-- Folder Selection (hidden if defaults provided) -->
@@ -359,19 +337,22 @@ watch(selectedPathId, handlePathChange);
         </div>
 
         <!-- Show current location if defaults provided -->
-        <div v-if="hasDefaults" class="p-3 bg-muted rounded-lg">
+        <div v-if="hasDefaults" class="rounded-lg border bg-muted/40 p-3">
           <p class="text-sm">
             <span class="text-muted-foreground">ตำแหน่ง:</span>
             <span class="font-medium ml-2">
               {{ defaultPath?.name }} / {{ defaultFolder?.folder }}
             </span>
           </p>
-          <p v-if="selectedPath" class="text-xs text-muted-foreground mt-1">
-            ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB
-            <span v-if="selectedPath.mime_type">
-              | ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
-            </span>
-          </p>
+          <div
+            v-if="selectedPath"
+            class="mt-1 space-y-1 text-xs text-muted-foreground"
+          >
+            <p>ขนาดไฟล์สูงสุด: {{ selectedPath.maximum_size_mb || 10 }} MB</p>
+            <p v-if="selectedPath.mime_type" class="break-words leading-relaxed">
+              ประเภทที่อนุญาต: {{ selectedPath.mime_type }}
+            </p>
+          </div>
         </div>
 
         <!-- File Upload Area -->
@@ -434,8 +415,7 @@ watch(selectedPathId, handlePathChange);
           </div>
         </div>
 
-        <!-- Description (for metadata mode) -->
-        <div v-if="uploadMode === 'with-metadata'" class="space-y-2">
+        <div class="space-y-2">
           <Label>คำอธิบาย</Label>
           <Textarea
             v-model="description"

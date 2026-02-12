@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useToast } from "@/composables/useToast";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { ROUTE_NAMES } from "@/lib/constants";
 
 import MainLayout from "@/layouts/MainLayout.vue";
@@ -79,10 +79,12 @@ import {
   listPaths,
   listFolders,
   listResources,
+  createResource,
   deletePath,
   deleteFolder,
   deleteResource,
   getResourceById,
+  validateFile,
   formatFileSize,
 } from "@/stores/document";
 
@@ -92,6 +94,7 @@ import PathEditModal from "./PathEditModal.vue";
 import FolderCreateModal from "./FolderCreateModal.vue";
 
 const router = useRouter();
+const route = useRoute();
 const { showError, showSuccess } = useToast();
 
 // Navigation state
@@ -109,6 +112,17 @@ const resources = ref<ResourceListItem[]>([]);
 const isLoading = ref(false);
 const errorMessage = ref<string | null>(null);
 const searchQuery = ref("");
+const isResourceDragOver = ref(false);
+const isQuickUploading = ref(false);
+const quickUploadProgress = ref(0);
+
+// Pagination
+const pageSize = 10;
+const currentPages = ref<Record<BrowseLevel, number>>({
+  paths: 1,
+  folders: 1,
+  resources: 1,
+});
 
 // Dialogs
 const showUploadDialog = ref(false);
@@ -159,19 +173,60 @@ const filteredItems = computed(() => {
 });
 
 const pageTitle = computed(() => {
-  if (currentLevel.value === "paths") return "Object Browser";
+  if (currentLevel.value === "paths") return "จัดการเอกสาร (Paths)";
   if (currentLevel.value === "folders") return currentPath.value?.name || "Folders";
   if (currentLevel.value === "resources") return currentFolder.value?.folder || "Files";
   return "Documents";
 });
 
 const pageDescription = computed(() => {
-  if (currentLevel.value === "paths") return "เลือก Path (Bucket) เพื่อดูไฟล์";
+  if (currentLevel.value === "paths") return "เลือก Path เพื่อดูไฟล์";
   if (currentLevel.value === "folders") return `Path: ${currentPath.value?.bucket_name}`;
   if (currentLevel.value === "resources")
     return `${currentPath.value?.name} / ${currentFolder.value?.folder}`;
   return "";
 });
+
+const currentPage = computed({
+  get: () => currentPages.value[currentLevel.value],
+  set: (value: number) => {
+    currentPages.value[currentLevel.value] = value;
+  },
+});
+
+const totalItems = computed(() => filteredItems.value.length);
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(totalItems.value / pageSize));
+});
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  const end = start + pageSize;
+  return filteredItems.value.slice(start, end);
+});
+
+const pageStart = computed(() => {
+  if (totalItems.value === 0) return 0;
+  return (currentPage.value - 1) * pageSize + 1;
+});
+
+const pageEnd = computed(() => {
+  return Math.min(currentPage.value * pageSize, totalItems.value);
+});
+
+const canGoPrevPage = computed(() => currentPage.value > 1);
+const canGoNextPage = computed(() => currentPage.value < totalPages.value);
+
+const goPrevPage = () => {
+  if (!canGoPrevPage.value) return;
+  currentPage.value -= 1;
+};
+
+const goNextPage = () => {
+  if (!canGoNextPage.value) return;
+  currentPage.value += 1;
+};
 
 // File icon helper
 const getFileIcon = (contentType: string) => {
@@ -283,6 +338,90 @@ const openUploadDialog = () => {
   showUploadDialog.value = true;
 };
 
+const validateFileForCurrentPath = (file: File) => {
+  const maxSize = currentPath.value?.maximum_size_mb || 10;
+  const allowedTypes = currentPath.value?.mime_type
+    ?.split(",")
+    .map((type) => type.trim())
+    .filter(Boolean);
+
+  return validateFile(file, {
+    maxSizeMB: maxSize,
+    allowedMimeTypes: allowedTypes,
+  });
+};
+
+const quickUploadFiles = async (files: File[]) => {
+  if (!currentPath.value || !currentFolder.value || files.length === 0) return;
+
+  isQuickUploading.value = true;
+  quickUploadProgress.value = 0;
+
+  try {
+    let uploadedCount = 0;
+
+    for (let i = 0; i < files.length; i += 1) {
+      const file = files[i];
+      if (!file) continue;
+      const validation = validateFileForCurrentPath(file);
+
+      if (!validation.valid) {
+        showError(`${file.name}: ${validation.error || "ไฟล์ไม่ถูกต้อง"}`);
+        continue;
+      }
+
+      await createResource(file, {
+        path: currentPath.value.name,
+        folder: currentFolder.value.folder,
+        uploaded_by: "current-user",
+      });
+
+      uploadedCount += 1;
+      quickUploadProgress.value = Math.round(((i + 1) / files.length) * 100);
+    }
+
+    if (uploadedCount > 0) {
+      showSuccess(`อัปโหลดสำเร็จ ${uploadedCount} ไฟล์`);
+      await loadResources(currentFolder.value.id);
+    }
+  } catch (error: any) {
+    const message =
+      error.response?.data?.error?.message ||
+      error.response?.data?.error ||
+      "ไม่สามารถอัปโหลดไฟล์ได้";
+    showError(message);
+  } finally {
+    isQuickUploading.value = false;
+    quickUploadProgress.value = 0;
+    isResourceDragOver.value = false;
+  }
+};
+
+const handleResourceDragOver = (event: DragEvent) => {
+  if (currentLevel.value !== "resources" || isQuickUploading.value) return;
+  event.preventDefault();
+  isResourceDragOver.value = true;
+};
+
+const handleResourceDragLeave = (event: DragEvent) => {
+  if (currentLevel.value !== "resources") return;
+  const related = event.relatedTarget as Node | null;
+  const current = event.currentTarget as Node | null;
+  if (current && related && current.contains(related)) return;
+  isResourceDragOver.value = false;
+};
+
+const handleResourceDrop = async (event: DragEvent) => {
+  if (currentLevel.value !== "resources" || isQuickUploading.value) return;
+  event.preventDefault();
+  isResourceDragOver.value = false;
+
+  const droppedFiles = Array.from(event.dataTransfer?.files || []);
+  if (droppedFiles.length === 0) return;
+
+  await quickUploadFiles(droppedFiles);
+};
+
 const handleUploadSuccess = () => {
   showUploadDialog.value = false;
   showSuccess("อัปโหลดไฟล์สำเร็จ");
@@ -392,13 +531,70 @@ const viewResourceDetail = (resource: ResourceListItem) => {
   router.push({
     name: ROUTE_NAMES.DOCUMENTS_DETAIL,
     params: { resourceId: resource.resource_id },
+    query: {
+      pathId: currentPath.value?.id,
+      folderId: currentFolder.value?.id,
+      pathName: currentPath.value?.name,
+      folderName: currentFolder.value?.folder,
+      fileName: resource.original_filename,
+    },
   });
 };
 
 // Lifecycle
+const restoreFromRouteQuery = async () => {
+  const queryPathId =
+    typeof route.query.pathId === "string" ? route.query.pathId : "";
+  const queryFolderId =
+    typeof route.query.folderId === "string" ? route.query.folderId : "";
+
+  await loadPaths();
+
+  if (!queryPathId) return;
+
+  const matchedPath = paths.value.find((p) => p.id === queryPathId);
+  if (!matchedPath) return;
+
+  currentLevel.value = "folders";
+  currentPath.value = matchedPath;
+  await loadFolders(matchedPath.id);
+
+  if (!queryFolderId) return;
+
+  const matchedFolder = folders.value.find((f) => f.id === queryFolderId);
+  if (!matchedFolder) return;
+
+  currentLevel.value = "resources";
+  currentFolder.value = matchedFolder;
+  await loadResources(matchedFolder.id);
+};
+
 onMounted(() => {
-  loadPaths();
+  restoreFromRouteQuery();
 });
+
+watch(
+  () => currentLevel.value,
+  () => {
+    currentPages.value[currentLevel.value] = 1;
+  }
+);
+
+watch(
+  () => searchQuery.value,
+  () => {
+    currentPages.value[currentLevel.value] = 1;
+  }
+);
+
+watch(
+  () => filteredItems.value.length,
+  () => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value;
+    }
+  }
+);
 </script>
 
 <template>
@@ -516,8 +712,31 @@ onMounted(() => {
       </Card>
 
       <!-- Content -->
-      <Card>
+      <Card
+        :class="{
+          'ring-2 ring-primary ring-offset-2 transition-all':
+            currentLevel === 'resources' && isResourceDragOver,
+        }"
+        @dragover="handleResourceDragOver"
+        @dragleave="handleResourceDragLeave"
+        @drop="handleResourceDrop"
+      >
         <CardContent class="p-0">
+          <div
+            v-if="currentLevel === 'resources'"
+            class="border-b px-4 py-2 text-sm"
+            :class="
+              isResourceDragOver
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted/30 text-muted-foreground'
+            "
+          >
+            <span v-if="isQuickUploading">
+              กำลังอัปโหลด... {{ quickUploadProgress }}%
+            </span>
+            <span v-else>ลากไฟล์มาวางที่นี่เพื่ออัปโหลดทันที</span>
+          </div>
+
           <!-- Loading -->
           <div v-if="isLoading" class="p-6 space-y-4">
             <Skeleton class="h-12 w-full" />
@@ -604,7 +823,7 @@ onMounted(() => {
             </TableHeader>
             <TableBody>
               <TableRow
-                v-for="path in (filteredItems as PathResponse[])"
+                v-for="path in (paginatedItems as PathResponse[])"
                 :key="path.id"
                 class="cursor-pointer hover:bg-accent/50"
                 @click="goToPath(path)"
@@ -669,7 +888,7 @@ onMounted(() => {
             </TableHeader>
             <TableBody>
               <TableRow
-                v-for="folder in (filteredItems as FolderResponse[])"
+                v-for="folder in (paginatedItems as FolderResponse[])"
                 :key="folder.id"
                 class="cursor-pointer hover:bg-accent/50"
                 @click="goToFolder(folder)"
@@ -727,7 +946,7 @@ onMounted(() => {
             </TableHeader>
             <TableBody>
               <TableRow
-                v-for="resource in (filteredItems as ResourceListItem[])"
+                v-for="resource in (paginatedItems as ResourceListItem[])"
                 :key="resource.resource_id"
                 class="cursor-pointer hover:bg-accent/50"
                 @click="viewResourceDetail(resource)"
@@ -786,6 +1005,36 @@ onMounted(() => {
               </TableRow>
             </TableBody>
           </Table>
+
+          <div
+            v-if="!isLoading && !errorMessage && filteredItems.length > 0"
+            class="flex items-center justify-between border-t px-4 py-3"
+          >
+            <p class="text-sm text-muted-foreground">
+              แสดง {{ pageStart }}-{{ pageEnd }} จาก {{ totalItems }} รายการ
+            </p>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="!canGoPrevPage"
+                @click="goPrevPage"
+              >
+                ก่อนหน้า
+              </Button>
+              <span class="text-sm text-muted-foreground">
+                หน้า {{ currentPage }} / {{ totalPages }}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="!canGoNextPage"
+                @click="goNextPage"
+              >
+                ถัดไป
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

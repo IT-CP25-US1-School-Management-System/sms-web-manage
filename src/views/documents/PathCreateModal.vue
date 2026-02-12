@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import RoleMultiSelect from "./RoleMultiSelect.vue";
 
 import { Loader2 } from "lucide-vue-next";
 
@@ -40,6 +41,7 @@ const formData = ref<CreatePathRequest>({
   mime_type: "",
   maximum_size_mb: 10,
   is_generate_filename: true,
+  roles: [],
 });
 
 // State
@@ -91,6 +93,7 @@ const handleSubmit = async () => {
       mime_type: formData.value.mime_type?.trim() || undefined,
       maximum_size_mb: formData.value.maximum_size_mb || 10,
       is_generate_filename: formData.value.is_generate_filename,
+      roles: formData.value.roles || [],
     });
 
     resetForm();
@@ -112,6 +115,7 @@ const resetForm = () => {
     mime_type: "",
     maximum_size_mb: 10,
     is_generate_filename: true,
+    roles: [],
   };
   errors.value = {};
 };
@@ -211,6 +215,11 @@ watch(
             คั่นด้วย comma (ว่างไว้ = อนุญาตทุกประเภท)
           </p>
         </div>
+
+        <RoleMultiSelect
+          v-model="formData.roles"
+          :disabled="isSubmitting"
+        />
 
         <!-- Maximum Size -->
         <div class="space-y-2">

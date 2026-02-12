@@ -90,7 +90,7 @@ const handleSubmit = async () => {
       name: formData.value.name.trim(),
       bucket_name: formData.value.bucket_name.trim(),
       description: formData.value.description?.trim() || undefined,
-      mime_type: formData.value.mime_type?.trim() || undefined,
+      mime_type: formData.value.mime_type?.trim() || "*",
       maximum_size_mb: formData.value.maximum_size_mb || 10,
       is_generate_filename: formData.value.is_generate_filename,
       roles: formData.value.roles || [],
@@ -212,7 +212,7 @@ watch(
             :disabled="isSubmitting"
           />
           <p class="text-xs text-muted-foreground">
-            คั่นด้วย comma (ว่างไว้ = อนุญาตทุกประเภท)
+            คั่นด้วย comma (ว่างไว้ = อนุญาตทุกประเภท | *)
           </p>
         </div>
 
@@ -246,7 +246,7 @@ watch(
             </p>
           </div>
           <Switch
-            v-model:checked="formData.is_generate_filename"
+          v-model="formData.is_generate_filename"
             :disabled="isSubmitting"
           />
         </div>

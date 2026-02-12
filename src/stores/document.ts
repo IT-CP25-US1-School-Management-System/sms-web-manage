@@ -212,8 +212,11 @@ export async function deletePath(pathId: string): Promise<string> {
   const response = await dataApiInstance.delete<MessageResponse>(
     `${getBaseUrl()}/v1/documents/path/${pathId}`
   );
-
-  return response.data.data.message;
+  // Handle different response structures
+  if (response.data?.data?.message) {
+    return response.data.data.message;
+  }
+  return 'Deleted successfully';
 }
 
 // =====================
@@ -278,7 +281,11 @@ export async function deleteFolder(folderId: string): Promise<string> {
     `${getBaseUrl()}/v1/documents/folder/${folderId}`
   );
 
-  return response.data.data.message;
+  // Handle different response structures
+  if (response.data?.data?.message) {
+    return response.data.data.message;
+  }
+  return 'Deleted successfully';
 }
 
 // =====================

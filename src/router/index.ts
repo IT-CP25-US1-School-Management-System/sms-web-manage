@@ -142,6 +142,25 @@ const router = createRouter({
         },
       ],
     },
+    // Document Management Routes
+    {
+      path: "/documents",
+      name: ROUTE_NAMES.DOCUMENTS,
+      component: () => import("@/views/documents/DocumentsView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/documents/search",
+      name: ROUTE_NAMES.DOCUMENTS_SEARCH,
+      component: () => import("@/views/documents/DocumentsSearchView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/documents/resource/:resourceId",
+      name: ROUTE_NAMES.DOCUMENTS_DETAIL,
+      component: () => import("@/views/documents/DocumentDetail.vue"),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 

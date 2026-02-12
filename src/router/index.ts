@@ -150,6 +150,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/documents/search",
+      name: ROUTE_NAMES.DOCUMENTS_SEARCH,
+      component: () => import("@/views/documents/DocumentsSearchView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/documents/resource/:resourceId",
       name: ROUTE_NAMES.DOCUMENTS_DETAIL,
       component: () => import("@/views/documents/DocumentDetail.vue"),

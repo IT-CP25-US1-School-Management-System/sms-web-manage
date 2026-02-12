@@ -614,6 +614,16 @@ watch(
           <!-- Create buttons based on level -->
           <Button
             v-if="currentLevel === 'paths'"
+            variant="outline"
+            @click="router.push({ name: ROUTE_NAMES.DOCUMENTS_SEARCH })"
+            class="flex items-center gap-2"
+          >
+            <Search class="h-4 w-4" />
+            ค้นหาไฟล์ทั้งหมด
+          </Button>
+
+          <Button
+            v-if="currentLevel === 'paths'"
             @click="openPathCreate"
             class="flex items-center gap-2"
           >

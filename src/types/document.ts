@@ -173,6 +173,61 @@ export interface ResourceSearchParams {
   limit?: number;
 }
 
+export interface SearchResourcesRequest {
+  q?: string;
+  path_id?: string;
+  folder_id?: string;
+  status?: DocumentStatus;
+  uploaded_by?: string;
+  mime_type?: string;
+  tag_ids?: string;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  limit?: number;
+  sort_by?: "created_at" | "size" | "filename";
+  sort_order?: "asc" | "desc";
+}
+
+export interface SearchHighlight {
+  field: string;
+  matched: string;
+}
+
+export interface SearchQueryInfo {
+  q: string;
+  filters_applied: string[];
+}
+
+export interface SearchResourceItem {
+  resource_id: string;
+  original_filename: string;
+  storage_filename: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+  metadata?: MetadataInfo;
+  folder?: {
+    id: string;
+    folder: string;
+    path?: {
+      id: string;
+      name: string;
+      bucket_name: string;
+    };
+  };
+  highlight?: SearchHighlight;
+}
+
+export interface SearchResourcesResponse {
+  data: SearchResourceItem[];
+  page: number;
+  per_page: number;
+  total_rows: number;
+  total_pages: number;
+  query?: SearchQueryInfo;
+}
+
 export interface FolderSearchParams {
   path_id?: string;
 }

@@ -26,6 +26,7 @@ export const ROUTE_NAMES = {
   USER_DETAIL: "UserDetail",
   // Document Management
   DOCUMENTS: "Documents",
+  DOCUMENTS_SEARCH: "DocumentsSearch",
   DOCUMENTS_DETAIL: "DocumentsDetail",
 } as const;
 

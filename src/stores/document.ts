@@ -5,6 +5,8 @@ import type {
   FileWithMetadataResponse,
   ResourceListResponse,
   ResourceSearchParams,
+  SearchResourcesRequest,
+  SearchResourcesResponse,
   CreateResourceParams,
   UpdateResourceRequest,
   UploadParams,
@@ -93,6 +95,20 @@ export async function listResources(
 ): Promise<ResourceListResponse> {
   const response = await dataApiInstance.get<ResourceListResponse>(
     `${getBaseUrl()}/v1/documents/resource`,
+    { params }
+  );
+
+  return response.data;
+}
+
+/**
+ * Search resources across all paths/folders
+ */
+export async function searchResources(
+  params?: SearchResourcesRequest
+): Promise<SearchResourcesResponse> {
+  const response = await dataApiInstance.get<SearchResourcesResponse>(
+    `${getBaseUrl()}/v1/documents/search`,
     { params }
   );
 

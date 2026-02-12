@@ -43,6 +43,9 @@ const breadcrumbConfig = {
   Users: { label: "จัดการผู้ใช้งาน", icon: Users },
   UserDetail: { label: "รายละเอียดผู้ใช้งาน", icon: User },
   Roles: { label: "จัดการบทบาท", icon: FileKey },
+  Documents: { label: "จัดการเอกสาร", icon: FileText },
+  DocumentsDetail: { label: "รายละเอียดเอกสาร", icon: FileText },
+  DocumentsSearch: { label: "ค้นหาเอกสาร", icon: FileText },
 };
 
 const currentBreadcrumbs = computed(() => {
@@ -207,6 +210,30 @@ const currentBreadcrumbs = computed(() => {
       label: breadcrumbConfig.UserDetail.label,
       icon: breadcrumbConfig.UserDetail.icon,
       to: { name: ROUTE_NAMES.USER_DETAIL },
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DOCUMENTS) {
+    const config = breadcrumbConfig[routeName];
+    breadcrumbs.push({
+      label: config.label,
+      icon: config.icon,
+      to: { name: routeName },
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DOCUMENTS_DETAIL) {
+    const config = breadcrumbConfig[routeName];
+    breadcrumbs.push({
+      label: config.label,
+      icon: config.icon,
+      to: { name: routeName },
+      isLast: true,
+    });
+  } else if (routeName === ROUTE_NAMES.DOCUMENTS_SEARCH) {
+    const config = breadcrumbConfig[routeName];
+    breadcrumbs.push({
+      label: config.label,
+      icon: config.icon,
+      to: { name: routeName },
       isLast: true,
     });
   } else {

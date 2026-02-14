@@ -36,7 +36,7 @@ const { showError } = useToast();
 // Form data
 const formData = ref<CreatePathRequest>({
   name: "",
-  bucket_name: "",
+  bucket_name: crypto.randomUUID(),
   description: "",
   mime_type: "",
   maximum_size_mb: 10,
@@ -50,7 +50,7 @@ const errors = ref<Record<string, string>>({});
 
 // Computed
 const canSubmit = computed(() => {
-  return formData.value.name.trim() && formData.value.bucket_name.trim();
+  return formData.value.name.trim();
 });
 
 // Methods
@@ -61,13 +61,6 @@ const validateForm = (): boolean => {
     errors.value.name = "กรุณากรอกชื่อ Path";
   } else if (!/^[a-z0-9-]+$/.test(formData.value.name)) {
     errors.value.name = "ชื่อ Path ต้องเป็นตัวพิมพ์เล็ก ตัวเลข หรือ - เท่านั้น";
-  }
-
-  if (!formData.value.bucket_name.trim()) {
-    errors.value.bucket_name = "กรุณากรอกชื่อ Bucket";
-  } else if (!/^[a-z0-9-]+$/.test(formData.value.bucket_name)) {
-    errors.value.bucket_name =
-      "ชื่อ Bucket ต้องเป็นตัวพิมพ์เล็ก ตัวเลข หรือ - เท่านั้น";
   }
 
   if (
@@ -110,7 +103,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   formData.value = {
     name: "",
-    bucket_name: "",
+    bucket_name: crypto.randomUUID(),
     description: "",
     mime_type: "",
     maximum_size_mb: 10,
@@ -127,12 +120,7 @@ const handleClose = () => {
   }
 };
 
-// Auto-generate bucket name from path name
-const autoGenerateBucket = () => {
-  if (formData.value.name && !formData.value.bucket_name) {
-    formData.value.bucket_name = `sms-${formData.value.name}`;
-  }
-};
+
 
 // Watchers
 watch(
@@ -150,9 +138,6 @@ watch(
     <DialogContent class="sm:max-w-[500px]">
       <DialogHeader>
         <DialogTitle>สร้าง Path ใหม่</DialogTitle>
-        <DialogDescription>
-          Path คือ Bucket สำหรับจัดเก็บไฟล์ใน MinIO
-        </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-4 py-4">
@@ -163,7 +148,6 @@ watch(
             id="name"
             v-model="formData.name"
             placeholder="documents"
-            @blur="autoGenerateBucket"
             :disabled="isSubmitting"
           />
           <p v-if="errors.name" class="text-sm text-destructive">
@@ -171,23 +155,6 @@ watch(
           </p>
           <p class="text-xs text-muted-foreground">
             ใช้ตัวพิมพ์เล็ก ตัวเลข หรือ - เท่านั้น
-          </p>
-        </div>
-
-        <!-- Bucket Name -->
-        <div class="space-y-2">
-          <Label for="bucket_name">Bucket Name *</Label>
-          <Input
-            id="bucket_name"
-            v-model="formData.bucket_name"
-            placeholder="sms-documents"
-            :disabled="isSubmitting"
-          />
-          <p v-if="errors.bucket_name" class="text-sm text-destructive">
-            {{ errors.bucket_name }}
-          </p>
-          <p class="text-xs text-muted-foreground">
-            ชื่อ Bucket ใน MinIO (ต้องไม่ซ้ำกับที่มีอยู่)
           </p>
         </div>
 

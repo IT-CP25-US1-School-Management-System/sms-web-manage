@@ -49,6 +49,17 @@ const formData = ref<CreateFolderRequest>({
 const isSubmitting = ref(false);
 const errors = ref<Record<string, string>>({});
 
+// Helpers
+const MAX_LABEL_LENGTH = 30;
+const truncateText = (text: string, max = MAX_LABEL_LENGTH) => {
+  return text.length > max ? text.slice(0, max) + "..." : text;
+};
+
+const getPathLabel = (path: PathResponse) => {
+  const label = path.description ? `${path.name} - ${path.description}` : path.name;
+  return truncateText(label);
+};
+
 // Computed
 const canSubmit = computed(() => {
   return formData.value.path_id && formData.value.folder.trim();
@@ -136,9 +147,6 @@ watch(
     <DialogContent class="sm:max-w-[400px]">
       <DialogHeader>
         <DialogTitle>สร้าง Folder ใหม่</DialogTitle>
-        <DialogDescription>
-          Folder คือโฟลเดอร์ย่อยภายใน Path
-        </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-4 py-4">
@@ -146,15 +154,12 @@ watch(
         <div class="space-y-2">
           <Label>Path *</Label>
           <Select v-model="formData.path_id" :disabled="isSubmitting">
-            <SelectTrigger>
+            <SelectTrigger class="w-full">
               <SelectValue placeholder="เลือก Path" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem v-for="path in paths" :key="path.id" :value="path.id">
-                {{ path.name }}
-                <span v-if="path.description" class="text-muted-foreground">
-                  - {{ path.description }}
-                </span>
+                {{ getPathLabel(path) }}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -176,8 +181,7 @@ watch(
             {{ errors.folder }}
           </p>
           <p class="text-xs text-muted-foreground">
-            ใช้ตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น และสามารถมี /
-            เพื่อสร้างโฟลเดอร์ย่อยได้
+            ใช้ตัวพิมพ์เล็ก ตัวเลข - หรือ _ เท่านั้น
           </p>
         </div>
       </div>

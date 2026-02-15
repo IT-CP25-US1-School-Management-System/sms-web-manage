@@ -5,7 +5,6 @@ import { useToast } from "@/composables/useToast";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -65,7 +64,8 @@ const validateForm = (): boolean => {
 
   if (
     formData.value.maximum_size_mb &&
-    (formData.value.maximum_size_mb < 1 || formData.value.maximum_size_mb > 1000)
+    (formData.value.maximum_size_mb < 1 ||
+      formData.value.maximum_size_mb > 1000)
   ) {
     errors.value.maximum_size_mb = "ขนาดไฟล์สูงสุดต้องอยู่ระหว่าง 1-1000 MB";
   }
@@ -120,8 +120,6 @@ const handleClose = () => {
   }
 };
 
-
-
 // Watchers
 watch(
   () => props.open,
@@ -129,7 +127,7 @@ watch(
     if (!newValue) {
       resetForm();
     }
-  }
+  },
 );
 </script>
 
@@ -183,10 +181,7 @@ watch(
           </p>
         </div>
 
-        <RoleMultiSelect
-          v-model="formData.roles"
-          :disabled="isSubmitting"
-        />
+        <RoleMultiSelect v-model="formData.roles" :disabled="isSubmitting" />
 
         <!-- Maximum Size -->
         <div class="space-y-2">
@@ -213,7 +208,7 @@ watch(
             </p>
           </div>
           <Switch
-          v-model="formData.is_generate_filename"
+            v-model="formData.is_generate_filename"
             :disabled="isSubmitting"
           />
         </div>

@@ -72,7 +72,6 @@ const isAutoFilling = ref(false);
 
 const listRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
-const panelRef = ref<HTMLElement | null>(null);
 
 const selectedValues = computed(() => props.modelValue || []);
 const canLoadMore = computed(() => page.value < totalPages.value);
@@ -317,7 +316,10 @@ onBeforeUnmount(() => {
       :disabled="disabled"
       @click="toggleDropdown"
     >
-      <span v-if="selectedValues.length === 0" class="truncate text-sm text-muted-foreground">
+      <span
+        v-if="selectedValues.length === 0"
+        class="truncate text-sm text-muted-foreground"
+      >
         {{ triggerText }}
       </span>
       <div v-else class="flex min-w-0 flex-wrap gap-1.5">

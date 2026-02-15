@@ -149,7 +149,11 @@ export async function deleteResource(resourceId: string): Promise<string> {
     `${getBaseUrl()}/v1/documents/resource/${resourceId}`
   );
 
-  return response.data.data.message;
+  // Handle different response structures
+  if (response.data?.data?.message) {
+    return response.data.data.message;
+  }
+  return 'Deleted successfully';
 }
 
 // =====================

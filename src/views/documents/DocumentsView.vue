@@ -519,14 +519,19 @@ const handleDelete = async () => {
     itemToDelete.value = null;
     isDeleting.value = false;
     
-    // Reload data
-    if (deleteType.value === "path") {
-      await loadPaths();
-    } else if (deleteType.value === "folder" && currentPath.value) {
-      await loadFolders(currentPath.value.id);
-    } else if (deleteType.value === "resource" && currentFolder.value) {
-      await loadResources(currentFolder.value.id);
+    // Reload data (outside try-catch so reload errors don't show as delete errors)
+    try {
+      if (deleteType.value === "path") {
+        await loadPaths();
+      } else if (deleteType.value === "folder" && currentPath.value) {
+        await loadFolders(currentPath.value.id);
+      } else if (deleteType.value === "resource" && currentFolder.value) {
+        await loadResources(currentFolder.value.id);
+      }
+    } catch (reloadError) {
+      console.error("Reload after delete error:", reloadError);
     }
+    return;
   } catch (error: any) {
     console.error("Delete error:", error);
     

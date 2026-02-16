@@ -47,7 +47,7 @@ const emit = defineEmits<{
 const { showError } = useToast();
 
 // Form data
-const selectedFile = ref<File | null>(null);
+const selectedFiles = ref<File[]>([]);
 const selectedPathId = ref<string>("");
 const selectedFolderId = ref<string>("");
 const description = ref("");
@@ -68,7 +68,7 @@ const selectedPath = computed(() =>
 );
 
 const canSubmit = computed(() => {
-  if (!selectedFile.value) return false;
+  if (selectedFiles.value.length === 0) return false;
   if (!selectedPathId.value) return false;
   if (!selectedFolderId.value) return false;
   if (fileError.value) return false;
@@ -132,8 +132,9 @@ const handlePathChange = () => {
 
 const handleFileSelect = (event: Event) => {
   const input = event.target as HTMLInputElement;
-  if (input.files && input.files[0]) {
-    validateAndSetFile(input.files[0]);
+  if (input.files && input.files.length > 0) {
+    Array.from(input.files).forEach((file) => validateAndAddFile(file));
+    input.value = "";
   }
 };
 
@@ -141,8 +142,8 @@ const handleDrop = (event: DragEvent) => {
   event.preventDefault();
   dragOver.value = false;
 
-  if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
-    validateAndSetFile(event.dataTransfer.files[0]);
+  if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+    Array.from(event.dataTransfer.files).forEach((file) => validateAndAddFile(file));
   }
 };
 
@@ -155,7 +156,7 @@ const handleDragLeave = () => {
   dragOver.value = false;
 };
 
-const validateAndSetFile = (file: File) => {
+const validateAndAddFile = (file: File) => {
   fileError.value = null;
 
   // Validate based on selected path settings
@@ -174,20 +175,27 @@ const validateAndSetFile = (file: File) => {
 
   if (!validation.valid) {
     fileError.value = validation.error || "ไฟล์ไม่ถูกต้อง";
-    selectedFile.value = null;
     return;
   }
 
-  selectedFile.value = file;
+  // Prevent duplicate files
+  const isDuplicate = selectedFiles.value.some(
+    (f) => f.name === file.name && f.size === file.size
+  );
+  if (!isDuplicate) {
+    selectedFiles.value.push(file);
+  }
 };
 
-const removeFile = () => {
-  selectedFile.value = null;
-  fileError.value = null;
+const removeFile = (index: number) => {
+  selectedFiles.value.splice(index, 1);
+  if (selectedFiles.value.length === 0) {
+    fileError.value = null;
+  }
 };
 
 const handleSubmit = async () => {
-  if (!canSubmit.value || !selectedFile.value) return;
+  if (!canSubmit.value || selectedFiles.value.length === 0) return;
 
   isUploading.value = true;
   uploadProgress.value = 0;
@@ -202,21 +210,20 @@ const handleSubmit = async () => {
       return;
     }
 
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      if (uploadProgress.value < 90) {
-        uploadProgress.value += 10;
-      }
-    }, 200);
+    const totalFiles = selectedFiles.value.length;
 
-    await createResource(selectedFile.value, {
-      path: selectedPath.value.name,
-      folder: selectedFolder.folder,
-      uploaded_by: "current-user", // TODO: Get from auth store
-      description: description.value || undefined,
-    });
+    for (let i = 0; i < totalFiles; i++) {
+      const file = selectedFiles.value[i] as File;
+      uploadProgress.value = Math.round((i / totalFiles) * 100);
 
-    clearInterval(progressInterval);
+      await createResource(file, {
+        path: selectedPath.value.name,
+        folder: selectedFolder.folder,
+        uploaded_by: "current-user", // TODO: Get from auth store
+        description: description.value || undefined,
+      });
+    }
+
     uploadProgress.value = 100;
 
     setTimeout(() => {
@@ -235,7 +242,7 @@ const handleSubmit = async () => {
 };
 
 const resetForm = () => {
-  selectedFile.value = null;
+  selectedFiles.value = [];
   selectedPathId.value = "";
   selectedFolderId.value = "";
   description.value = "";
@@ -363,8 +370,32 @@ watch(selectedPathId, handlePathChange);
         <!-- File Upload Area -->
         <div class="space-y-2">
           <Label>ไฟล์ *</Label>
+
+          <!-- Selected Files -->
           <div
-            v-if="!selectedFile"
+            v-for="(file, index) in selectedFiles"
+            :key="`${file.name}-${file.size}`"
+            class="flex items-center gap-3 p-3 border rounded-lg bg-muted/50"
+          >
+            <FileText class="h-8 w-8 text-muted-foreground flex-shrink-0" />
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate">{{ file.name }}</p>
+              <p class="text-xs text-muted-foreground">
+                {{ formatFileSize(file.size) }}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              @click="removeFile(index)"
+              :disabled="isUploading"
+            >
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
+
+          <!-- Upload drop zone (always visible) -->
+          <div
             class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
             :class="{
               'border-primary bg-primary/5': dragOver,
@@ -382,6 +413,7 @@ watch(selectedPathId, handlePathChange);
               <input
                 type="file"
                 class="hidden"
+                multiple
                 @change="handleFileSelect"
                 :disabled="isUploading"
               />
@@ -389,28 +421,6 @@ watch(selectedPathId, handlePathChange);
                 เลือกไฟล์
               </Button>
             </label>
-          </div>
-
-          <!-- Selected File -->
-          <div
-            v-else
-            class="flex items-center gap-3 p-3 border rounded-lg bg-muted/50"
-          >
-            <FileText class="h-8 w-8 text-muted-foreground flex-shrink-0" />
-            <div class="flex-1 min-w-0">
-              <p class="font-medium truncate">{{ selectedFile.name }}</p>
-              <p class="text-xs text-muted-foreground">
-                {{ formatFileSize(selectedFile.size) }}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              @click="removeFile"
-              :disabled="isUploading"
-            >
-              <X class="h-4 w-4" />
-            </Button>
           </div>
 
           <!-- File Error -->
@@ -445,7 +455,7 @@ watch(selectedPathId, handlePathChange);
         </Button>
         <Button @click="handleSubmit" :disabled="!canSubmit || isUploading">
           <Loader2 v-if="isUploading" class="h-4 w-4 animate-spin mr-2" />
-          {{ isUploading ? "กำลังอัปโหลด..." : "อัปโหลด" }}
+          {{ isUploading ? "กำลังอัปโหลด..." : `อัปโหลด${selectedFiles.length > 0 ? ` (${selectedFiles.length} ไฟล์)` : ''}` }}
         </Button>
       </DialogFooter>
     </DialogContent>

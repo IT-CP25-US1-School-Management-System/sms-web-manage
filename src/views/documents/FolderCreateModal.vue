@@ -5,7 +5,6 @@ import { useToast } from "@/composables/useToast";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,7 +55,9 @@ const truncateText = (text: string, max = MAX_LABEL_LENGTH) => {
 };
 
 const getPathLabel = (path: PathResponse) => {
-  const label = path.description ? `${path.name} - ${path.description}` : path.name;
+  const label = path.description
+    ? `${path.name} - ${path.description}`
+    : path.name;
   return truncateText(label);
 };
 

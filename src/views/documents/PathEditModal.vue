@@ -242,7 +242,7 @@ watch(
             </p>
           </div>
           <Switch
-            v-model:checked="formData.is_generate_filename"
+            v-model="formData.is_generate_filename"
             :disabled="isSubmitting"
           />
         </div>

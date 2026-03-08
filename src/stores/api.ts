@@ -13,7 +13,7 @@ const DATA_BASE_URL = import.meta.env.VITE_API_BASE_URL_DATA;
 
 if (!AUTH_BASE_URL || !DATA_BASE_URL) {
   throw new Error(
-    "Missing required environment variables: VITE_API_BASE_URL_AUTH and VITE_API_BASE_URL_DATA must be defined"
+    "Missing required environment variables: VITE_API_BASE_URL_AUTH and VITE_API_BASE_URL_DATA must be defined",
   );
 }
 
@@ -26,9 +26,8 @@ export function setTokens(tokens: AuthTokens | null) {
   currentTokens = tokens;
 
   if (tokens) {
-    dataApiInstance.defaults.headers.common[
-      "Authorization"
-    ] = `Bearer ${tokens.access_token}`;
+    dataApiInstance.defaults.headers.common["Authorization"] =
+      `Bearer ${tokens.access_token}`;
   } else {
     delete dataApiInstance.defaults.headers.common["Authorization"];
   }
@@ -62,7 +61,7 @@ authApiInstance.interceptors.response.use(
   (error) => {
     console.error("AUTH API Error:", error.response?.data || error.message);
     return Promise.reject(error);
-  }
+  },
 );
 
 dataApiInstance.interceptors.response.use(
@@ -75,16 +74,14 @@ dataApiInstance.interceptors.response.use(
 
       try {
         console.log("401 detected, attempting to refresh session...");
-        const sessionResponse = await authApiInstance.get<SessionResponse>(
-          "/v1/auth/session"
-        );
+        const sessionResponse =
+          await authApiInstance.get<SessionResponse>("/v1/auth/session");
         const sessionData = sessionResponse.data;
 
         setTokens(sessionData);
 
-        originalRequest.headers[
-          "Authorization"
-        ] = `Bearer ${sessionData.access_token}`;
+        originalRequest.headers["Authorization"] =
+          `Bearer ${sessionData.access_token}`;
 
         return dataApiInstance(originalRequest);
       } catch (refreshError) {
@@ -92,22 +89,27 @@ dataApiInstance.interceptors.response.use(
         setTokens(null);
         router.push({ name: ROUTE_NAMES.LOGIN });
         return Promise.reject(
-          new Error("Session expired. Please login again.")
+          new Error("Session expired. Please login again."),
         );
       }
     }
 
     console.error("DATA API Error:", error.response?.data || error.message);
     return Promise.reject(error);
-  }
+  },
 );
 
 /**
  * Get authorization URL from OAuth2 provider
  */
-export async function getAuthUrl(): Promise<AuthorizeResponse> {
+export async function getAuthUrl(
+  redirectUri: string,
+): Promise<AuthorizeResponse> {
   const response = await authApiInstance.post<AuthorizeResponse>(
-    "/v1/oauth2/login"
+    "/v1/oauth2/login",
+    {
+      redirect_uri: redirectUri,
+    },
   );
   return response.data;
 }
@@ -116,11 +118,11 @@ export async function getAuthUrl(): Promise<AuthorizeResponse> {
  * Exchange authorization code for tokens
  */
 export async function exchangeAuthCode(
-  request: OAuth2CallbackRequest
+  request: OAuth2CallbackRequest,
 ): Promise<AuthTokens> {
   const response = await authApiInstance.post<AuthTokens>(
     "/v1/oauth2/callback",
-    request
+    request,
   );
   const tokens = response.data;
 
@@ -132,9 +134,8 @@ export async function exchangeAuthCode(
  * Get current session information
  */
 export async function getSession(): Promise<SessionResponse> {
-  const response = await authApiInstance.get<SessionResponse>(
-    "/v1/auth/session"
-  );
+  const response =
+    await authApiInstance.get<SessionResponse>("/v1/auth/session");
   const session = response.data;
 
   setTokens(session);

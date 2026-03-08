@@ -36,7 +36,8 @@ export const useAuthStore = defineStore("auth", () => {
       loading.value = true;
       clearError();
 
-      const response = await getAuthUrl();
+      const redirectUri = `${window.location.origin}/login`;
+      const response = await getAuthUrl(redirectUri);
 
       window.location.href = response.auth_url;
     } catch (err: any) {
@@ -131,7 +132,7 @@ export const useAuthStore = defineStore("auth", () => {
     if (!user.value?.permissions) return false;
 
     return user.value.permissions.some(
-      (permission) => permission.resource_name === resourceName
+      (permission) => permission.resource_name === resourceName,
     );
   };
 

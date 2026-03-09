@@ -355,7 +355,7 @@ const handleCreateDataset = handleSubmit(async (formData) => {
         </Button>
         <Button
           type="submit"
-          form="createชุดข้อมูลForm"
+          form="createDatasetForm"
           :disabled="isCreating"
           class="cursor-pointer"
         >

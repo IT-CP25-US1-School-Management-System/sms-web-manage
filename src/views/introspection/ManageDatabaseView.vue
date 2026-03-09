@@ -5,7 +5,13 @@ import { usePagination } from "@/composables/usePagination";
 
 import MainLayout from "@/layouts/MainLayout.vue";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +50,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Search,
-  FileText,
   Loader2,
   AlertCircle,
   Trash2,
@@ -331,20 +336,20 @@ watch(
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">Database</h1>
+          <h1 class="text-3xl font-bold tracking-tight">จัดการฐานข้อมูล</h1>
           <p class="text-muted-foreground mt-2">
-            จัดการและดูข้อมูล ฐานข้อมูลที ต่าง ๆ
+            จัดการและดูข้อมูลฐานข้อมูลต่าง ๆ
           </p>
         </div>
         <router-link :to="{ name: ROUTE_NAMES.MANAGE_DATABASE_CREATE }">
           <Button class="flex items-center gap-2 cursor-pointer">
             <Plus class="h-4 w-4" />
-            สร้าง Database ใหม่
+            สร้างฐานข้อมูลใหม่
           </Button>
         </router-link>
       </div>
 
-      <!-- Datasets Table -->
+      <!-- Search and Filter -->
       <Card>
         <CardHeader>
           <div class="flex items-center gap-4">
@@ -354,7 +359,7 @@ watch(
               />
               <Input
                 v-model="searchQuery"
-                placeholder="ค้นหา dataset..."
+                placeholder="ค้นหา database..."
                 class="pl-10"
                 @keyup.enter="handleSearch"
               />
@@ -378,6 +383,16 @@ watch(
               ล้าง
             </Button>
           </div>
+        </CardHeader>
+      </Card>
+
+      <!-- Datasets Table -->
+      <Card>
+        <CardHeader>
+          <CardTitle>รายการฐานข้อมูล</CardTitle>
+          <CardDescription>
+            จัดการและดูรายละเอียดฐานข้อมูลทั้งหมด
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <!-- Loading state -->
@@ -409,7 +424,7 @@ watch(
             class="flex flex-col items-center justify-center py-8 text-center"
           >
             <AlertCircle class="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 class="text-lg font-semibold mb-2">ไม่พบ Database</h3>
+            <h3 class="text-lg font-semibold mb-2">ไม่พบฐานข้อมูล</h3>
             <p class="text-muted-foreground mb-4">
               {{
                 searchQuery
@@ -419,7 +434,7 @@ watch(
             </p>
             <Button variant="outline">
               <Plus class="h-4 w-4 mr-2" />
-              สร้าง Database แรก
+              สร้างฐานข้อมูลแรก
             </Button>
           </div>
 
@@ -427,9 +442,9 @@ watch(
           <Table v-else>
             <TableHeader>
               <TableRow>
-                <TableHead class="w-60">ชื่อ Database</TableHead>
-                <TableHead class="w-30">Type</TableHead>
-                <TableHead class="w-30">DB Type</TableHead>
+                <TableHead class="w-60">ชื่อฐานข้อมูล</TableHead>
+                <TableHead class="w-30">ประเภท</TableHead>
+                <TableHead class="w-30">ประเภทฐานข้อมูล</TableHead>
                 <TableHead class="w-30">เปิดใช้งาน</TableHead>
                 <TableHead class="w-20">การดำเนินการ</TableHead>
               </TableRow>
@@ -447,13 +462,10 @@ watch(
                 class="cursor-pointer hover:bg-accent/50"
               >
                 <TableCell class="w-80">
-                  <div class="flex items-center gap-2">
-                    <FileText class="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div class="font-medium">{{ source.name }}</div>
-                      <div class="text-sm text-muted-foreground">
-                        {{ source.description || "ไม่มีคำอธิบาย" }}
-                      </div>
+                  <div>
+                    <div class="font-medium">{{ source.name }}</div>
+                    <div class="text-sm text-muted-foreground">
+                      {{ source.description || "ไม่มีคำอธิบาย" }}
                     </div>
                   </div>
                 </TableCell>

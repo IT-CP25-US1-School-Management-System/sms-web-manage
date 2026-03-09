@@ -16,8 +16,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
-  Home,
-  Settings,
   Users,
   User,
   Database,
@@ -32,14 +30,12 @@ import ModeToggle from "@/components/ModeToggle.vue";
 const route = useRoute();
 
 const breadcrumbConfig = {
-  Home: { label: "หน้าหลัก", icon: Home },
-  Settings: { label: "ตั้งค่าระบบ", icon: Settings },
   Profile: { label: "โปรไฟล์", icon: User },
   ManageDatabase: { label: "จัดการฐานข้อมูล", icon: Database },
   ManageDatabaseWithID: { label: "รายละเอียดฐานข้อมูล", icon: Cylinder },
-  Dataset: { label: "Dataset", icon: HardDrive },
-  DatasetVersion: { label: "Dataset Version", icon: FileText },
-  DatasetVersionServing: { label: "View Data", icon: Database },
+  Dataset: { label: "ชุดข้อมูล", icon: HardDrive },
+  DatasetVersion: { label: "เวอร์ชันชุดข้อมูล", icon: FileText },
+  DatasetVersionServing: { label: "ดูข้อมูล", icon: Database },
   Users: { label: "จัดการผู้ใช้งาน", icon: Users },
   UserDetail: { label: "รายละเอียดผู้ใช้งาน", icon: User },
   Roles: { label: "จัดการบทบาท", icon: FileKey },
@@ -57,28 +53,21 @@ const currentBreadcrumbs = computed(() => {
     isLast: boolean;
   }> = [
     {
-      label: breadcrumbConfig.Home.label,
-      icon: breadcrumbConfig.Home.icon,
-      to: { name: ROUTE_NAMES.HOME },
+      label: breadcrumbConfig.ManageDatabase.label,
+      icon: breadcrumbConfig.ManageDatabase.icon,
+      to: { name: ROUTE_NAMES.MANAGE_DATABASE },
       isLast: false,
     },
   ];
 
-  if (!routeName || routeName === ROUTE_NAMES.HOME) {
+  if (!routeName || routeName === ROUTE_NAMES.MANAGE_DATABASE) {
     if (breadcrumbs[0]) {
       breadcrumbs[0].isLast = true;
     }
     return breadcrumbs;
   }
 
-  if (routeName === ROUTE_NAMES.SETTINGS) {
-    breadcrumbs.push({
-      label: breadcrumbConfig.Settings.label,
-      icon: breadcrumbConfig.Settings.icon,
-      to: { name: ROUTE_NAMES.SETTINGS },
-      isLast: true,
-    });
-  } else if (routeName === ROUTE_NAMES.PROFILE) {
+  if (routeName === ROUTE_NAMES.PROFILE) {
     breadcrumbs.push({
       label: breadcrumbConfig.Profile.label,
       icon: breadcrumbConfig.Profile.icon,

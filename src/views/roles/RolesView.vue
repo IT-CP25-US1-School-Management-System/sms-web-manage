@@ -37,7 +37,6 @@ import {
 import { authApiInstance } from "@/stores/api";
 import {
   Search,
-  FileText,
   Loader2,
   AlertCircle,
   Plus,
@@ -46,7 +45,11 @@ import {
 } from "lucide-vue-next";
 import ConfirmModel from "../../components/introspaction/ConfirmModel.vue";
 import { useRouter, useRoute } from "vue-router";
-import type { Roles, RolesSearchParams, RolesSearchResponse } from "@/types/roles";
+import type {
+  Roles,
+  RolesSearchParams,
+  RolesSearchResponse,
+} from "@/types/roles";
 const router = useRouter();
 const route = useRoute();
 // Reactive data
@@ -78,11 +81,16 @@ onMounted(() => {
 });
 
 // API functions
-const getRoles = async (params?: RolesSearchParams): Promise<RolesSearchResponse> => {
+const getRoles = async (
+  params?: RolesSearchParams,
+): Promise<RolesSearchResponse> => {
   try {
-    const response = await authApiInstance.get<RolesSearchResponse>("/v1/auth/roles", {
-      params,
-    });
+    const response = await authApiInstance.get<RolesSearchResponse>(
+      "/v1/auth/roles",
+      {
+        params,
+      },
+    );
     return response.data;
   } catch (error: any) {
     console.error("Error fetching roles:", error);
@@ -228,7 +236,7 @@ watch(
     ) {
       loadRoles();
     }
-  }
+  },
 );
 </script>
 
@@ -238,15 +246,13 @@ watch(
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">roles</h1>
-          <p class="text-muted-foreground mt-2">
-            จัดการและดูข้อมูล roles ต่าง ๆ
-          </p>
+          <h1 class="text-3xl font-bold tracking-tight">จัดการบทบาท</h1>
+          <p class="text-muted-foreground mt-2">จัดการและดูข้อมูลบทบาทต่าง ๆ</p>
         </div>
         <router-link :to="{ name: ROUTE_NAMES.ROLES_CREATE }">
           <Button class="flex items-center gap-2">
             <Plus class="h-4 w-4" />
-            เพิ่ม Role
+            เพิ่มบทบาท
           </Button>
         </router-link>
       </div>
@@ -261,7 +267,7 @@ watch(
               />
               <Input
                 v-model="searchQuery"
-                placeholder="ค้นหา dataset..."
+                placeholder="ค้นหาบทบาท..."
                 class="pl-10"
                 @keyup.enter="handleSearch"
               />
@@ -287,10 +293,8 @@ watch(
       <!-- Datasets Table -->
       <Card>
         <CardHeader>
-          <CardTitle>รายการ roles</CardTitle>
-          <CardDescription>
-            จัดการและดูรายละเอียดฐานข้อมูลทั้งหมด
-          </CardDescription>
+          <CardTitle>รายการบทบาท</CardTitle>
+          <CardDescription> จัดการและดูรายละเอียดบทบาททั้งหมด </CardDescription>
         </CardHeader>
         <CardContent>
           <!-- Loading state -->
@@ -322,12 +326,12 @@ watch(
             class="flex flex-col items-center justify-center py-8 text-center"
           >
             <AlertCircle class="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 class="text-lg font-semibold mb-2">ไม่พบ role</h3>
+            <h3 class="text-lg font-semibold mb-2">ไม่พบบทบาท</h3>
             <p class="text-muted-foreground mb-4">
               {{
                 searchQuery
-                  ? "ไม่พบ roles ที่ตรงกับการค้นหา"
-                  : "ยังไม่มี roles ในระบบ"
+                  ? "ไม่พบบทบาทที่ตรงกับการค้นหา"
+                  : "ยังไม่มีบทบาทในระบบ"
               }}
             </p>
           </div>
@@ -336,8 +340,8 @@ watch(
           <Table v-else>
             <TableHeader>
               <TableRow>
-                <TableHead class="w-60">role</TableHead>
-                <TableHead class="w-30 text-center">action</TableHead>
+                <TableHead class="w-60">บทบาท</TableHead>
+                <TableHead class="w-30 text-center">การดำเนินการ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -347,19 +351,15 @@ watch(
                 class="cursor-pointer hover:bg-accent/50"
               >
                 <TableCell class="w-80">
-                  <div class="flex items-center gap-2">
-                    <FileText class="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div class="font-medium">
-                        {{ role.name }}
-                      </div>
-                         <div class="text-sm text-muted-foreground">
-                        {{ role.description || "ไม่มีคำอธิบาย" }}
-                      </div>
+                  <div>
+                    <div class="font-medium">
+                      {{ role.name }}
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                      {{ role.description || "ไม่มีคำอธิบาย" }}
                     </div>
                   </div>
                 </TableCell>
-  
 
                 <TableCell class="w-[30px]">
                   <div class="flex items-center justify-center gap-2">
@@ -368,7 +368,10 @@ watch(
                       แก้ไข
                     </Badge>
 
-                    <Badge @click="deleteRole(role)" class="bg-red-600 hover:bg-red-700 text-white">
+                    <Badge
+                      @click="deleteRole(role)"
+                      class="bg-red-600 hover:bg-red-700 text-white"
+                    >
                       <Trash2 class="mr-2 h-4 w-4" @click="deleteRole(role)" />
                       ลบ
                     </Badge>

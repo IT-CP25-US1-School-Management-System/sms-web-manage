@@ -2,10 +2,12 @@ import { env } from "./env";
 
 export const API_BASE_URL = env.API_BASE_URL;
 
+export const ADMIN_ROLE = "admin";
+
 export const ROUTE_NAMES = {
   LOGIN: "Login",
-  SETTINGS: "Settings",
-  HOME: "Home",
+  NOT_FOUND: "NotFound",
+  UNAUTHORIZED: "Unauthorized",
   PROFILE: "Profile",
   MANAGE_DATABASE: "ManageDatabase",
   MANAGE_DATABASE_WITH_ID: "ManageDatabaseWithID",
@@ -31,10 +33,11 @@ export const ROUTE_NAMES = {
 } as const;
 
 export const DATASET_SENSITIVITY = {
-  PUBLIC: 'public',
-  INTERNAL: 'internal',
-  CONFIDENTIAL: 'confidential',
-  RESTRICTED: 'restricted'
+  PUBLIC: "public",
+  INTERNAL: "internal",
+  CONFIDENTIAL: "confidential",
+  RESTRICTED: "restricted",
 } as const;
 
-export type DatasetSensitivity = typeof DATASET_SENSITIVITY[keyof typeof DATASET_SENSITIVITY];
+export type DatasetSensitivity =
+  (typeof DATASET_SENSITIVITY)[keyof typeof DATASET_SENSITIVITY];

@@ -29,8 +29,6 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import {
-  Home,
-  Settings,
   User,
   ChevronsUpDown,
   LogOut,
@@ -68,13 +66,6 @@ const menuConfig: {
   settings: MenuItem[];
 } = {
   main: [
-    {
-      id: "home",
-      label: "หน้าหลัก",
-      icon: Home,
-      routeName: ROUTE_NAMES.HOME,
-      children: null,
-    },
     {
       id: "manage-database",
       label: "จัดการฐานข้อมูล",
@@ -129,13 +120,6 @@ const menuConfig: {
   ],
   settings: [
     {
-      id: "settings",
-      label: "ตั้งค่าระบบ",
-      icon: Settings,
-      routeName: ROUTE_NAMES.SETTINGS,
-      children: null,
-    },
-    {
       id: "profile",
       label: "โปรไฟล์",
       icon: User,
@@ -157,7 +141,7 @@ const initializeCollapsibleStates = () => {
       const hasActiveChild = item.children.some(
         (child: MenuChild) =>
           route.name === child.routeName ||
-          route.name?.toString().startsWith(child.routeName || "")
+          route.name?.toString().startsWith(child.routeName || ""),
       );
       states[item.id] = hasActiveChild;
     }
@@ -192,7 +176,7 @@ const isActiveMenuItem = (menuItem: MenuItem) => {
     menuItem.children.length > 0
   ) {
     return menuItem.children.some((child: MenuChild) =>
-      isActiveRoute(child.routeName)
+      isActiveRoute(child.routeName),
     );
   }
   return isActiveRoute(menuItem.routeName);
@@ -366,12 +350,6 @@ const handleLogout = async () => {
                 >
                   <User class="mr-2 h-4 w-4" />
                   โปรไฟล์
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  @click="router.push({ name: ROUTE_NAMES.SETTINGS })"
-                >
-                  <Settings class="mr-2 h-4 w-4" />
-                  ตั้งค่า
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

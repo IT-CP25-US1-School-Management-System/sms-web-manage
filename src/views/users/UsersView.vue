@@ -36,13 +36,7 @@ import {
 
 import { authApiInstance } from "@/stores/api";
 
-import {
-  Search,
-  FileText,
-  Loader2,
-  AlertCircle,
-  Edit,
-} from "lucide-vue-next";
+import { Search, Loader2, AlertCircle, Edit } from "lucide-vue-next";
 
 import { useRouter, useRoute } from "vue-router";
 import type {
@@ -85,14 +79,14 @@ onMounted(() => {
 
 // API functions
 const getuserss = async (
-  params?: UsersSearchParams
+  params?: UsersSearchParams,
 ): Promise<UsersSearchResponse> => {
   try {
     const response = await authApiInstance.get<UsersSearchResponse>(
       "/v1/auth/users",
       {
         params,
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
@@ -171,7 +165,7 @@ const handleAssignRoleConfirm = async (data: {
         authApiInstance.post(`/v1/auth/users/roles/assign`, {
           keycloak_id: currentUser.keycloak_id,
           role_ids: data.addRoleIds,
-        })
+        }),
       );
     }
 
@@ -180,14 +174,14 @@ const handleAssignRoleConfirm = async (data: {
         authApiInstance.post(`/v1/auth/users/roles/remove`, {
           keycloak_id: currentUser.keycloak_id,
           role_ids: data.removeRoleIds,
-        })
+        }),
       );
     }
 
     await Promise.all(promises);
 
     showSuccess(
-      `อัปเดต roles สำหรับ ${currentUser.first_name} ${currentUser.last_name} เรียบร้อยแล้ว`
+      `อัปเดตบทบาทสำหรับ ${currentUser.first_name} ${currentUser.last_name} เรียบร้อยแล้ว`,
     );
     showAssignRoleDialog.value = false;
     selectedUser.value = null; // Clear หลัง success
@@ -272,7 +266,7 @@ watch(
     ) {
       loadUsers();
     }
-  }
+  },
 );
 </script>
 
@@ -282,14 +276,14 @@ watch(
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">Users</h1>
+          <h1 class="text-3xl font-bold tracking-tight">จัดการผู้ใช้งาน</h1>
           <p class="text-muted-foreground mt-2">
             จัดการสิทธิ์และดูข้อมูลผู้ใช้งานต่าง ๆ
           </p>
         </div>
         <router-link :to="{ name: ROUTE_NAMES.ROLES }">
           <Button class="flex items-center gap-2 cursor-pointer">
-            จัดการ Role
+            จัดการบทบาท
           </Button>
         </router-link>
       </div>
@@ -304,7 +298,7 @@ watch(
               />
               <Input
                 v-model="searchQuery"
-                placeholder="ค้นหา dataset..."
+                placeholder="ค้นหาผู้ใช้งาน..."
                 class="pl-10"
                 @keyup.enter="handleSearch"
               />
@@ -334,9 +328,9 @@ watch(
       <!-- Datasets Table -->
       <Card>
         <CardHeader>
-          <CardTitle>รายการ users</CardTitle>
+          <CardTitle>รายการผู้ใช้งาน</CardTitle>
           <CardDescription>
-            จัดการและดูรายละเอียดฐานข้อมูลทั้งหมด
+            จัดการและดูรายละเอียดผู้ใช้งานทั้งหมด
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -369,12 +363,12 @@ watch(
             class="flex flex-col items-center justify-center py-8 text-center"
           >
             <AlertCircle class="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 class="text-lg font-semibold mb-2">ไม่พบ users</h3>
+            <h3 class="text-lg font-semibold mb-2">ไม่พบผู้ใช้งาน</h3>
             <p class="text-muted-foreground mb-4">
               {{
                 searchQuery
-                  ? "ไม่พบ users ที่ตรงกับการค้นหา"
-                  : "ยังไม่มี users ในระบบ"
+                  ? "ไม่พบผู้ใช้งานที่ตรงกับการค้นหา"
+                  : "ยังไม่มีผู้ใช้งานในระบบ"
               }}
             </p>
           </div>
@@ -383,10 +377,10 @@ watch(
           <Table v-else>
             <TableHeader>
               <TableRow>
-                <TableHead class="w-60">full name</TableHead>
-                <TableHead class="w-30">email</TableHead>
-                <TableHead class="w-30">roles</TableHead>
-                <TableHead class="w-30"> แก้ไข role</TableHead>
+                <TableHead class="w-60">ชื่อ-นามสกุล</TableHead>
+                <TableHead class="w-30">อีเมล</TableHead>
+                <TableHead class="w-30">บทบาท</TableHead>
+                <TableHead class="w-30">แก้ไขบทบาท</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -397,12 +391,9 @@ watch(
                 @click="viewUserDetail(user)"
               >
                 <TableCell class="w-80">
-                  <div class="flex items-center gap-2">
-                    <FileText class="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div class="font-medium">
-                        {{ user.first_name }} {{ user.last_name }}
-                      </div>
+                  <div>
+                    <div class="font-medium">
+                      {{ user.first_name }} {{ user.last_name }}
                     </div>
                   </div>
                 </TableCell>

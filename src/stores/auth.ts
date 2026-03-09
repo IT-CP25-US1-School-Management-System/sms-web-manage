@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed, readonly } from "vue";
 import type { AuthTokens, OAuth2CallbackRequest } from "@/types/auth";
+import { ADMIN_ROLE } from "@/lib/constants";
 import {
   getAuthUrl,
   exchangeAuthCode,
@@ -18,6 +19,9 @@ export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = computed(() => tokens.value !== null);
   const user = computed(() => tokens.value?.user_info || null);
   const accessToken = computed(() => tokens.value?.access_token || null);
+  const isAdmin = computed(
+    () => user.value?.roles?.includes(ADMIN_ROLE) ?? false,
+  );
 
   const clearError = () => {
     error.value = null;
@@ -36,7 +40,7 @@ export const useAuthStore = defineStore("auth", () => {
       loading.value = true;
       clearError();
 
-      const redirectUri = `${window.location.origin}/login`;
+      const redirectUri = `${window.location.origin}${import.meta.env.BASE_URL}login`;
       const response = await getAuthUrl(redirectUri);
 
       window.location.href = response.auth_url;
@@ -151,6 +155,7 @@ export const useAuthStore = defineStore("auth", () => {
     error: readonly(error),
 
     isAuthenticated,
+    isAdmin,
     user,
     accessToken,
 

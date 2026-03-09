@@ -51,22 +51,27 @@ const scopeOptions = [
     value: "create",
     label: "Create",
     labelTh: "สร้าง",
-    description: "สร้างข้อมูลใหม่",
+    description: "สามารถสร้างข้อมูลใหม่",
   },
-  { value: "get", label: "Get", labelTh: "ดู", description: "ดูข้อมูล" },
+  { value: "get", label: "Get", labelTh: "ดู", description: "สามารถดูข้อมูล" },
   {
     value: "update",
     label: "Update",
     labelTh: "แก้ไข",
-    description: "แก้ไขข้อมูล",
+    description: "สามารถแก้ไขข้อมูล",
   },
-  { value: "delete", label: "Delete", labelTh: "ลบ", description: "ลบข้อมูล" },
+  {
+    value: "delete",
+    label: "Delete",
+    labelTh: "ลบ",
+    description: "สามารถลบข้อมูล",
+  },
 ];
 
 // Form validation schema for role/Source
 const roleSchema = toTypedSchema(
   z.object({
-    name: z.string().min(1, "กรุณาระบุชื่อ Role"),
+    name: z.string().min(1, "กรุณาระบุชื่อบทบาท"),
     description: z
       .string()
       .min(1, "กรุณาระบุคำอธิบาย")
@@ -171,14 +176,14 @@ const closeSheet = () => {
               class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
             >
               <FileText class="h-4 w-4" />
-              <span>ข้อมูลพื้นฐาน (Basic Information)</span>
+              <span>ข้อมูลพื้นฐาน</span>
             </div>
 
             <!-- Name -->
             <FormField v-slot="{ componentField }" name="name">
               <FormItem>
                 <FormLabel>
-                  ชื่อ Role (Role Name) <span class="text-destructive">*</span>
+                  ชื่อบทบาท<span class="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -197,12 +202,12 @@ const closeSheet = () => {
             <FormField v-slot="{ componentField }" name="description">
               <FormItem>
                 <FormLabel>
-                  คำอธิบาย (Description) <span class="text-destructive">*</span>
+                  คำอธิบาย <span class="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
                   <Input
                     v-bind="componentField"
-                    placeholder="อธิบายหน้าที่และวัตถุประสงค์ของ Role นี้"
+                    placeholder="อธิบายหน้าที่และวัตถุประสงค์ของ บทบาท นี้"
                   />
                 </FormControl>
                 <FormMessage />
@@ -255,11 +260,9 @@ const closeSheet = () => {
                 class="flex flex-row items-center justify-between rounded-lg border p-4"
               >
                 <div class="space-y-0.5">
-                  <FormLabel class="text-base">
-                    ตั้งเป็นค่าเริ่มต้น (Default Role)
-                  </FormLabel>
+                  <FormLabel class="text-base"> ตั้งเป็นค่าเริ่มต้น </FormLabel>
                   <FormDescription>
-                    Role นี้จะถูกกำหนดให้ผู้ใช้ใหม่โดยอัตโนมัติ
+                    บทบาทนี้จะถูกกำหนดให้ผู้ใช้ใหม่โดยอัตโนมัติ
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -282,7 +285,7 @@ const closeSheet = () => {
               >
                 <ShieldCheck class="h-4 w-4" />
                 <span
-                  >สิทธิ์การเข้าถึง (Scopes)
+                  >สิทธิ์การเข้าถึง
                   <span class="text-destructive">*</span></span
                 >
               </div>
@@ -320,9 +323,6 @@ const closeSheet = () => {
                     <div class="flex items-center justify-between">
                       <div>
                         <span class="font-medium">{{ scope.labelTh }}</span>
-                        <span class="text-muted-foreground ml-2"
-                          >({{ scope.label }})</span
-                        >
                       </div>
                     </div>
                     <p class="text-sm text-muted-foreground mt-0.5">

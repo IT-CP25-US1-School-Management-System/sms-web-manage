@@ -28,7 +28,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { Loader2, Eye, EyeOff } from "lucide-vue-next";
+import { Separator } from "@/components/ui/separator";
+
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  Database as DatabaseIcon,
+  FileText,
+  Server,
+  KeyRound,
+} from "lucide-vue-next";
 import { dataApiInstance } from "@/stores/api";
 import { DATASET_SENSITIVITY } from "@/lib/constants";
 import { ROUTE_NAMES } from "@/lib/constants";
@@ -65,7 +75,7 @@ const databaseSchema = toTypedSchema(
     password: z.string().min(1, "กรุณาระบุ Password"),
     database_name: z.string().min(1, "กรุณาระบุชื่อ Database"),
     params: z.string().optional(),
-  })
+  }),
 );
 
 // Form setup
@@ -92,7 +102,7 @@ const createDatabase = async (data: CreateDatabaseRequest) => {
   try {
     const response = await dataApiInstance.post<ApiResponse<Database>>(
       "/v1/introspect/sources",
-      data
+      data,
     );
     return response.data;
   } catch (error: any) {
@@ -157,23 +167,43 @@ const closeSheet = () => {
     <SheetContent
       class="sm:max-w-md max-w-sm p-0 overflow-hidden flex flex-col"
     >
-      <SheetHeader class="px-6 pt-6">
-        <SheetTitle>สร้าง Database ใหม่</SheetTitle>
-        <SheetDescription>
-          กรอกข้อมูลเพื่อสร้าง database ใหม่ในระบบ
-        </SheetDescription>
+      <SheetHeader class="px-6 pt-6 pb-4">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
+          >
+            <DatabaseIcon class="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <SheetTitle class="text-xl">สร้าง Database ใหม่</SheetTitle>
+            <SheetDescription>
+              กรอกข้อมูลเพื่อสร้าง database ใหม่ในระบบ
+            </SheetDescription>
+          </div>
+        </div>
       </SheetHeader>
-      <div class="flex-1 overflow-y-auto px-6 pb-6 pt-2">
+
+      <Separator />
+
+      <div class="flex-1 overflow-y-auto px-6 py-6">
         <!-- Form Card -->
         <form
           id="createDatabaseForm"
           @submit="handleCreateDatabase"
           class="grid gap-6"
         >
+          <!-- Section: ข้อมูลพื้นฐาน -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <FileText class="h-4 w-4" />
+            <span>ข้อมูลพื้นฐาน</span>
+          </div>
+
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
               <FormLabel
-                >ชื่อ Database
+                >ชื่อฐานข้อมูล
                 <span class="text-destructive">*</span></FormLabel
               >
               <FormControl>
@@ -206,7 +236,7 @@ const closeSheet = () => {
           <FormField v-slot="{ value }" name="is_active">
             <FormItem>
               <FormLabel
-                >Active Status
+                >การใช้งาน
                 <span class="text-destructive">*</span></FormLabel
               >
               <FormControl>
@@ -218,7 +248,7 @@ const closeSheet = () => {
                       :checked="value === true"
                       class="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
                     />
-                    <span>Yes</span>
+                    <span>เปิดใช้งาน</span>
                   </label>
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
@@ -227,7 +257,7 @@ const closeSheet = () => {
                       :checked="value === false"
                       class="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
                     />
-                    <span>No</span>
+                    <span>ปิดใช้งาน</span>
                   </label>
                 </div>
               </FormControl>
@@ -235,11 +265,21 @@ const closeSheet = () => {
             </FormItem>
           </FormField>
 
+          <Separator />
+
+          <!-- Section: การเชื่อมต่อ -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <Server class="h-4 w-4" />
+            <span>การเชื่อมต่อ</span>
+          </div>
+
           <!-- Database Type -->
           <FormField v-slot="{ componentField }" name="db_type">
             <FormItem>
               <FormLabel
-                >Database Product
+                >ประเภทฐานข้อมูล
                 <span class="text-destructive">*</span></FormLabel
               >
               <FormControl>
@@ -281,6 +321,16 @@ const closeSheet = () => {
               <FormMessage />
             </FormItem>
           </FormField>
+
+          <Separator />
+
+          <!-- Section: ข้อมูลรับรอง -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <KeyRound class="h-4 w-4" />
+            <span>ข้อมูลรับรอง</span>
+          </div>
 
           <!-- Username -->
           <FormField v-slot="{ componentField }" name="username">
@@ -332,7 +382,7 @@ const closeSheet = () => {
           <FormField v-slot="{ componentField }" name="database_name">
             <FormItem>
               <FormLabel
-                >Database Name
+                >ชื่อฐานข้อมูลที่ต้องการเชื่อมต่อ
                 <span class="text-destructive">*</span></FormLabel
               >
               <FormControl>
@@ -345,7 +395,7 @@ const closeSheet = () => {
           <!-- Params (Optional) -->
           <FormField v-slot="{ componentField }" name="params">
             <FormItem>
-              <FormLabel>Parameters (Optional)</FormLabel>
+              <FormLabel>พารามิเตอร์ (ไม่จำเป็น)</FormLabel>
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -358,17 +408,19 @@ const closeSheet = () => {
         </form>
       </div>
       <!-- Form Actions -->
-      <div class="flex justify-end gap-2 px-6 py-4 bg-background border-t">
+      <Separator />
+      <div class="flex justify-end gap-2 px-6 py-4 bg-muted/30">
         <Button
           type="button"
           variant="outline"
-          @click="router.back()"
+          @click="closeSheet()"
           :disabled="isCreating"
         >
           ยกเลิก
         </Button>
         <Button type="submit" form="createDatabaseForm" :disabled="isCreating">
           <Loader2 v-if="isCreating" class="h-4 w-4 animate-spin mr-2" />
+          <DatabaseIcon v-else class="h-4 w-4 mr-2" />
           สร้าง Database
         </Button>
       </div>

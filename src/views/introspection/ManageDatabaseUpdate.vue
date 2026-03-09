@@ -27,8 +27,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+import { Separator } from "@/components/ui/separator";
 
-import { Loader2, Eye, EyeOff } from "lucide-vue-next";
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  Database as DatabaseIcon,
+  FileText,
+  Server,
+  KeyRound,
+} from "lucide-vue-next";
 import { dataApiInstance } from "@/stores/api";
 import { DATASET_SENSITIVITY } from "@/lib/constants";
 import { ROUTE_NAMES } from "@/lib/constants";
@@ -69,14 +78,14 @@ const databaseSchema = toTypedSchema(
     password: z.string().optional(),
     database_name: z.string().min(1),
     params: z.string().optional(),
-  })
+  }),
 );
 
 // API functions
 const getDatabase = async (id: string): Promise<Database> => {
   try {
     const response = await dataApiInstance.get<ApiResponse<Database>>(
-      `/v1/introspect/sources/${id}`
+      `/v1/introspect/sources/${id}`,
     );
     if (!response.data.data) {
       throw new Error("ไม่พบข้อมูล database");
@@ -120,7 +129,7 @@ const loadDatabase = async () => {
   isLoading.value = true;
   try {
     const response = await getDatabase(
-      router.currentRoute.value.params.id as string
+      router.currentRoute.value.params.id as string,
     );
     // Store ID separately
     databaseId.value = response.id;
@@ -154,7 +163,7 @@ const updateDatabase = async (data: UpdateDatabaseRequest) => {
   try {
     const response = await dataApiInstance.put<ApiResponse<Database>>(
       `/v1/introspect/sources/${databaseId.value}`,
-      data
+      data,
     );
     return response.data;
   } catch (error: any) {
@@ -224,10 +233,21 @@ onMounted(() => {
     <SheetContent
       class="sm:max-w-md max-w-sm p-0 overflow-hidden flex flex-col"
     >
-      <SheetHeader class="px-6 pt-6">
-        <SheetTitle>แก้ไข Database ใหม่</SheetTitle>
-        <SheetDescription> แก้ไขข้อมูล database ใหม่ในระบบ </SheetDescription>
+      <SheetHeader class="px-6 pt-6 pb-4">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
+          >
+            <DatabaseIcon class="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <SheetTitle class="text-xl">แก้ไข Database</SheetTitle>
+            <SheetDescription> แก้ไขข้อมูล database ในระบบ </SheetDescription>
+          </div>
+        </div>
       </SheetHeader>
+
+      <Separator />
       <div class="flex-1 overflow-y-auto px-6 py-6">
         <!-- Form Card -->
 
@@ -236,9 +256,20 @@ onMounted(() => {
           @submit="handleUpdateDatabase"
           class="grid gap-6"
         >
+          <!-- Section: ข้อมูลพื้นฐาน -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <FileText class="h-4 w-4" />
+            <span>ข้อมูลพื้นฐาน (Basic Information)</span>
+          </div>
+
           <FormField v-slot="{ componentField }" name="name">
             <FormItem>
-              <FormLabel>ชื่อ Database <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >ชื่อ Database
+                <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -252,7 +283,9 @@ onMounted(() => {
           <!-- Description -->
           <FormField v-slot="{ componentField }" name="description">
             <FormItem>
-              <FormLabel>คำอธิบาย <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >คำอธิบาย <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -266,7 +299,10 @@ onMounted(() => {
           <!-- Is Active -->
           <FormField v-slot="{ value, handleChange }" name="is_active">
             <FormItem>
-              <FormLabel>Active Status <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Active Status
+                <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <div class="flex gap-4">
                   <label class="flex items-center gap-2 cursor-pointer">
@@ -295,10 +331,23 @@ onMounted(() => {
             </FormItem>
           </FormField>
 
+          <Separator />
+
+          <!-- Section: การเชื่อมต่อ -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <Server class="h-4 w-4" />
+            <span>การเชื่อมต่อ (Connection)</span>
+          </div>
+
           <!-- Database Type -->
           <FormField v-slot="{ componentField }" name="db_type">
             <FormItem>
-              <FormLabel>Database Type <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Database Type
+                <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น postgres" />
               </FormControl>
@@ -309,7 +358,9 @@ onMounted(() => {
           <!-- Host -->
           <FormField v-slot="{ componentField }" name="host">
             <FormItem>
-              <FormLabel>Host <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Host <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -323,7 +374,9 @@ onMounted(() => {
           <!-- Port -->
           <FormField v-slot="{ componentField }" name="port">
             <FormItem>
-              <FormLabel>Port <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Port <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input
                   v-bind="componentField"
@@ -335,10 +388,22 @@ onMounted(() => {
             </FormItem>
           </FormField>
 
+          <Separator />
+
+          <!-- Section: ข้อมูลรับรอง -->
+          <div
+            class="flex items-center gap-2 text-sm font-medium text-muted-foreground"
+          >
+            <KeyRound class="h-4 w-4" />
+            <span>ข้อมูลรับรอง (Credentials)</span>
+          </div>
+
           <!-- Username -->
           <FormField v-slot="{ componentField }" name="username">
             <FormItem>
-              <FormLabel>Username <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Username <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น root" />
               </FormControl>
@@ -371,7 +436,9 @@ onMounted(() => {
             v-if="showPasswordField"
           >
             <FormItem>
-              <FormLabel>New Password <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >New Password <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <div class="relative">
                   <Input
@@ -402,7 +469,10 @@ onMounted(() => {
           <!-- Database Name -->
           <FormField v-slot="{ componentField }" name="database_name">
             <FormItem>
-              <FormLabel>Database Name <span class="text-destructive">*</span></FormLabel>
+              <FormLabel
+                >Database Name
+                <span class="text-destructive">*</span></FormLabel
+              >
               <FormControl>
                 <Input v-bind="componentField" placeholder="เช่น dms_data" />
               </FormControl>
@@ -426,18 +496,20 @@ onMounted(() => {
         </form>
       </div>
 
-      <!-- Form Actions - Outside scroll area -->
-      <div class="flex justify-end gap-2 px-6 py-4 bg-background border-t">
+      <!-- Form Actions -->
+      <Separator />
+      <div class="flex justify-end gap-2 px-6 py-4 bg-muted/30">
         <Button
           type="button"
           variant="outline"
-          @click="router.back()"
+          @click="closeSheet()"
           :disabled="isUpdating"
         >
           ยกเลิก
         </Button>
         <Button type="submit" form="updateDatabaseForm" :disabled="isUpdating">
           <Loader2 v-if="isUpdating" class="h-4 w-4 animate-spin mr-2" />
+          <DatabaseIcon v-else class="h-4 w-4 mr-2" />
           บันทึก
         </Button>
       </div>

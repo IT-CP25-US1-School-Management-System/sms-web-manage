@@ -24,6 +24,7 @@ import type {
   DatabaseSearchParams,
   Schemas,
 } from "@/types/database";
+import { formatDateTime } from "@/lib/helpers";
 
 // Reactive data
 const database = ref<Database>({} as Database);
@@ -64,14 +65,14 @@ const getDatabasesDetail = async (): Promise<Database> => {
 
 // API functions
 const getDatabasesSchemas = async (
-  params?: DatabaseSearchParams
+  params?: DatabaseSearchParams,
 ): Promise<Schemas[]> => {
   try {
     const response = await dataApiInstance.get<{ data: Schemas[] }>(
       `/v1/introspect/schemas`,
       {
         params,
-      }
+      },
     );
     return response.data.data;
   } catch (error: any) {
@@ -83,14 +84,14 @@ const getDatabasesSchemas = async (
 };
 
 const getDatabasesColumns = async (
-  params?: DatabaseSearchParams
+  params?: DatabaseSearchParams,
 ): Promise<Columns[]> => {
   try {
     const response = await dataApiInstance.get<{ data: Columns[] }>(
       `/v1/introspect/columns`,
       {
         params,
-      }
+      },
     );
     console.log(response.data.data);
 
@@ -104,14 +105,14 @@ const getDatabasesColumns = async (
 };
 
 const getDatabasesTables = async (
-  params?: DatabaseSearchParams
+  params?: DatabaseSearchParams,
 ): Promise<Tables[]> => {
   try {
     const response = await dataApiInstance.get<{ data: Tables[] }>(
       `/v1/introspect/tables`,
       {
         params,
-      }
+      },
     );
     console.log(response.data.data);
 
@@ -197,11 +198,9 @@ watch(openTableId, async (newId) => {
 // Lifecycle
 onMounted(() => {
   loadDatasets("sources");
-  loadDatasets("schemas"
-    ,{
+  loadDatasets("schemas", {
     source_id: route.params.sourceId as string,
-  }
-  );
+  });
 });
 </script>
 
@@ -219,23 +218,26 @@ onMounted(() => {
       </div>
 
       <Card>
-        <CardTitle class="text-lg font-semibold pl-4">รายละเอียดฐานข้อมูล</CardTitle>
+        <CardTitle class="text-lg font-semibold pl-4"
+          >รายละเอียดฐานข้อมูล</CardTitle
+        >
         <CardContent>
           <div class="flex flex-col gap-2">
-            <p>id : {{ database.id }}</p>
-            <p>name : {{ database.name }}</p>
-            <p>description : {{ database.description }}</p>
-            <p>type : {{ database.type }}</p>
-            <p>is active : {{ database.is_active }}</p>
-            <p>sensitivity : {{ database.sensitivity }}</p>
-            <p>db product : {{ database.db_type }}</p>
-            <p>host : {{ database.host }}</p>
-            <p>port : {{ database.port }}</p>
-            <p>username : {{ database.username }}</p>
-            <p>database name : {{ database.database_name }}</p>
-            <p v-if="database.params">params : {{ database.params }}</p>
-            <p>created at : {{ database.created_at }}</p>
-            <p>updated at : {{ database.updated_at }}</p>
+            <p>id: {{ database.id }}</p>
+            <p>ชื่อฐานข้อมูล: {{ database.name }}</p>
+            <p>คำอธิบาย: {{ database.description }}</p>
+            <p>ประเภท: {{ database.type }}</p>
+            <p>
+              การใช้งาน: {{ database.is_active ? "เปิดใช้งาน" : "ปิดใช้งาน" }}
+            </p>
+            <p>ประเภทฐานข้อมูล: {{ database.db_type }}</p>
+            <p>Host: {{ database.host }}</p>
+            <p>Port: {{ database.port }}</p>
+            <p>Username: {{ database.username }}</p>
+            <p>ชื่อฐานข้อมูลที่เชื่อมต่อ: {{ database.database_name }}</p>
+            <p v-if="database.params">params: {{ database.params }}</p>
+            <p>วันที่สร้าง: {{ formatDateTime(database.created_at) }}</p>
+            <p>วันที่อัปเดต: {{ formatDateTime(database.updated_at) }}</p>
           </div>
         </CardContent>
       </Card>
@@ -244,15 +246,16 @@ onMounted(() => {
         v-model="openSchemaId"
         type="single"
         collapsible
-        class="w-full"
+        class="w-full border rounded-md bg-popover"
       >
         <AccordionItem
           v-for="schema in schemas"
           :key="schema.id"
           :value="schema.id"
+          class=""
         >
-          <AccordionTrigger class="hover:no-underline">
-            <div class="flex items-center justify-start w-full pr-4">
+          <AccordionTrigger class="hover:no-underline p-4">
+            <div class="flex items-center justify-start w-full">
               <Button
                 variant="ghost"
                 size="sm"
@@ -261,7 +264,7 @@ onMounted(() => {
                   showSchemaDialog = true;
                 "
               >
-                <Info class="h-4 w-4" />
+                <Info class="h-6 w-6" />
               </Button>
               <div class="flex items-center gap-3">
                 <Badge variant="outline">Schema</Badge>
@@ -291,7 +294,7 @@ onMounted(() => {
                         showTableDialog = true;
                       "
                     >
-                      <Info class="h-4 w-4" />
+                      <Info class="h-6 w-6" />
                     </Button>
                     <div class="flex items-center gap-3">
                       <Badge variant="outline">Table</Badge>

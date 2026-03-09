@@ -74,8 +74,8 @@ const goBack = () => {
               <Skeleton v-if="isLoadingUser" class="h-4 w-96" />
               <span v-else>
                 <div class="flex flex-col gab-1">
-                  <p>first name : {{ user?.first_name || "-" }}</p>
-                  <p>last name : {{ user?.last_name || "-" }}</p>
+                  <p>ชื่อ : {{ user?.first_name || "-" }}</p>
+                  <p>นามสกุล : {{ user?.last_name || "-" }}</p>
                 </div>
               </span>
             </CardDescription>
@@ -97,7 +97,7 @@ const goBack = () => {
           <div class="space-y-1">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <Key class="h-3 w-3" />
-              Keycloak ID
+              รหัสผู้ใช้
             </div>
             <div class="text-sm font-medium">
               {{ user?.keycloak_id || "-" }}
@@ -108,7 +108,7 @@ const goBack = () => {
           <div class="space-y-1">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <Mail class="h-3 w-3" />
-              Email
+              อีเมล
             </div>
             <Badge variant="secondary" class="capitalize">
               {{ user?.email }}
@@ -119,7 +119,7 @@ const goBack = () => {
           <div class="space-y-1">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <BadgeCheck class="h-3 w-3" />
-              Email Verified
+              ยืนยันอีเมล
             </div>
             <Badge variant="secondary" class="capitalize">
               {{ user?.email_verified }}
@@ -129,7 +129,7 @@ const goBack = () => {
           <div class="space-y-1">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <ClockPlus class="h-3 w-3" />
-              Created At
+              สร้างเมื่อ
             </div>
             <Badge variant="secondary" class="capitalize">
               {{ user?.created_at }}
@@ -140,7 +140,7 @@ const goBack = () => {
           <div class="space-y-1">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <ClockArrowUp class="h-3 w-3" />
-              Updated At
+              แก้ไขเมื่อ
             </div>
             <Badge variant="secondary" class="capitalize">
               {{ user?.updated_at }}
@@ -150,7 +150,7 @@ const goBack = () => {
           <div class="space-y-1 md:col-span-2">
             <div class="text-sm text-muted-foreground flex items-center gap-1">
               <LayoutList class="h-3 w-3" />
-              Roles
+              บทบาท
             </div>
             <div
               class="flex flex-wrap gap-1"

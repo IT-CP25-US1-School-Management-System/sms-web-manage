@@ -13,15 +13,7 @@ const router = createRouter({
     },
     {
       path: "/",
-      name: ROUTE_NAMES.HOME,
-      component: () => import("@/views/HomeView.vue"),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: "/setting",
-      name: ROUTE_NAMES.SETTINGS,
-      component: () => import("@/views/SettingsView.vue"),
-      meta: { requiresAuth: true },
+      redirect: "/database",
     },
     {
       path: "/profile",
@@ -99,8 +91,15 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/unauthorized",
+      name: ROUTE_NAMES.UNAUTHORIZED,
+      component: () => import("@/views/UnauthorizedView.vue"),
+      meta: { requiresAuth: false },
+    },
+    {
       path: "/:pathMatch(.*)*",
-      redirect: { name: ROUTE_NAMES.HOME },
+      name: ROUTE_NAMES.NOT_FOUND,
+      component: () => import("@/views/NotFoundView.vue"),
     },
     {
       path: "/users",
@@ -172,17 +171,23 @@ router.beforeEach(async (to, _from, next) => {
       try {
         await authStore.checkSession();
         if (authStore.isAuthenticated) {
-          next({ name: ROUTE_NAMES.HOME });
+          next({ name: ROUTE_NAMES.MANAGE_DATABASE });
           return;
         }
       } catch (error) {
         console.log("Session check failed on login page:", error);
       }
     } else {
-      next({ name: ROUTE_NAMES.HOME });
+      next({ name: ROUTE_NAMES.MANAGE_DATABASE });
       return;
     }
 
+    next();
+    return;
+  }
+
+  // Allow unauthorized page without further checks
+  if (to.name === ROUTE_NAMES.UNAUTHORIZED) {
     next();
     return;
   }
@@ -200,6 +205,12 @@ router.beforeEach(async (to, _from, next) => {
 
     if (!authStore.isAuthenticated) {
       next({ name: ROUTE_NAMES.LOGIN });
+      return;
+    }
+
+    // Block non-admin users
+    if (!authStore.isAdmin) {
+      next({ name: ROUTE_NAMES.UNAUTHORIZED });
       return;
     }
   }

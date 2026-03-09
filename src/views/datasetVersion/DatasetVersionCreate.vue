@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from "vue";
+import {
+  ref,
+  onMounted,
+  onBeforeUnmount,
+  computed,
+  watch,
+  nextTick,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useForm } from "vee-validate";
 import { toTypedSchema } from "@vee-validate/zod";
@@ -21,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   FormControl,
   FormDescription,
@@ -44,6 +52,7 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "@/components/ui/stepper";
+import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   Plus,
@@ -51,6 +60,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  ClipboardList,
+  AlertTriangle,
+  Lightbulb,
+  RefreshCw,
+  Notebook,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -78,9 +92,14 @@ const isLoadingTables = ref(false);
 const isLoadingColumns = ref(false);
 const selectedSchema = ref("");
 const selectedTable = ref("");
+const leftPanelRef = ref<HTMLElement | null>(null);
+const leftPanelHeight = ref(0);
 const currentStep = ref(1);
 const roles = ref<Roles[]>([]);
 const isLoadingRoles = ref(false);
+const enableOwnerColumn = ref(false);
+const ownerColumnValue = ref("");
+const tokenClaimValue = ref("");
 
 // Zod schemas for each step
 const step1Schema = z.object({
@@ -173,23 +192,67 @@ const fullSchema = z.object({
     )
     .min(1, "กรุณาเพิ่มอย่างน้อย 1 policy"),
   policies: z.object({
-    runtime: z.object({
-      default_view: z.string().min(1, "กรุณากรอก Default View"),
-      key_field: z.string().min(1, "กรุณากรอก Key Field"),
-      query: z.any(),
-    }),
+    runtime: z
+      .object({
+        default_view: z.string().min(1, "กรุณากรอก Default View"),
+        key_field: z.string().min(1, "กรุณากรอก Key Field"),
+        query: z.any(),
+        owner_column: z
+          .object({
+            table_name: z.string().min(1, "กรุณาเลือก Owner Column"),
+            column: z.string().min(1, "กรุณาเลือก Owner Column"),
+            alias: z.string().min(1, "กรุณาเลือก Owner Column"),
+          })
+          .optional()
+          .nullable(),
+        token_claim: z
+          .string()
+          .max(30, "Token Claim ต้องไม่เกิน 30 ตัวอักษร")
+          .optional()
+          .nullable(),
+      })
+      .refine(
+        (data) => {
+          if (data.owner_column && !data.token_claim) return false;
+          if (data.token_claim && !data.owner_column) return false;
+          return true;
+        },
+        {
+          message:
+            "ต้องกรอกทั้ง Owner Column และ Token Claim หรือไม่กรอกทั้งคู่",
+          path: ["token_claim"],
+        },
+      ),
     views: z.record(z.string(), z.any()),
     write: z
       .object({
         key_field: z.string(),
         allow_edit: z.array(z.string()),
         query: z.any(),
+        owner_column: z
+          .object({
+            table_name: z.string(),
+            column: z.string(),
+            alias: z.string(),
+          })
+          .optional()
+          .nullable(),
+        token_claim: z.string().max(30).optional().nullable(),
       })
       .optional(),
     delete: z
       .object({
         key_field: z.string(),
         query: z.any(),
+        owner_column: z
+          .object({
+            table_name: z.string(),
+            column: z.string(),
+            alias: z.string(),
+          })
+          .optional()
+          .nullable(),
+        token_claim: z.string().max(30).optional().nullable(),
       })
       .optional(),
   }),
@@ -217,6 +280,8 @@ const { validate, setFieldValue, values } = useForm({
           group_by: [],
           where_allow: [],
         },
+        owner_column: undefined,
+        token_claim: undefined,
       },
       views: {},
       write: {
@@ -226,6 +291,8 @@ const { validate, setFieldValue, values } = useForm({
           from: { table: "" },
           projections: [],
         },
+        owner_column: undefined,
+        token_claim: undefined,
       },
       delete: {
         key_field: "",
@@ -233,6 +300,8 @@ const { validate, setFieldValue, values } = useForm({
           from: { table: "" },
           projections: [],
         },
+        owner_column: undefined,
+        token_claim: undefined,
       },
     },
   },
@@ -268,9 +337,9 @@ const newJoin = ref({
 const steps = [
   { id: 1, title: "ข้อมูลพื้นฐาน", description: "Version, Database, Status" },
   { id: 2, title: "Schema", description: "Columns และ Types" },
-  { id: 3, title: "Views", description: "กำหนด Views" },
+  { id: 3, title: "Views", description: "การกำหนด Views" },
   { id: 4, title: "Access Policies", description: "สิทธิ์การเข้าถึง" },
-  { id: 5, title: "Runtime Policies", description: "Query Configuration" },
+  { id: 5, title: "Runtime Policies", description: "การกำหนด Query" },
 ];
 
 const canGoNext = computed(() => {
@@ -295,7 +364,13 @@ const canGoNext = computed(() => {
   }
   if (currentStep.value === 5) {
     const result = step4Schema.safeParse({ policies: values.policies });
-    return result.success;
+    if (!result.success) return false;
+    // Validate owner_column & token_claim pair
+    if (enableOwnerColumn.value) {
+      if (!ownerColumnValue.value || !tokenClaimValue.value) return false;
+      if (tokenClaimValue.value.length > 30) return false;
+    }
+    return true;
   }
   return true;
 });
@@ -1291,6 +1366,74 @@ const availableJoinTables = computed(() => {
   );
 });
 
+// Main table columns for owner_column selection
+const mainTableColumnNames = computed(() => {
+  if (!mainTable.value) return [];
+  const tableColumns = groupedColumns.value[mainTable.value] || [];
+  return tableColumns.map((col: any) => col.name);
+});
+
+// Watch enableOwnerColumn toggle to sync values to form
+watch(enableOwnerColumn, (enabled) => {
+  if (enabled) {
+    // Set owner_column and token_claim from local refs
+    if (ownerColumnValue.value && mainTable.value) {
+      const ownerCol = {
+        table_name: mainTable.value,
+        column: ownerColumnValue.value,
+        alias: ownerColumnValue.value,
+      };
+      setFieldValue("policies.runtime.owner_column", ownerCol);
+      setFieldValue("policies.write.owner_column", ownerCol);
+      setFieldValue("policies.delete.owner_column", ownerCol);
+    }
+    if (tokenClaimValue.value) {
+      setFieldValue("policies.runtime.token_claim", tokenClaimValue.value);
+      setFieldValue("policies.write.token_claim", tokenClaimValue.value);
+      setFieldValue("policies.delete.token_claim", tokenClaimValue.value);
+    }
+  } else {
+    // Clear all owner_column and token_claim
+    ownerColumnValue.value = "";
+    tokenClaimValue.value = "";
+    setFieldValue("policies.runtime.owner_column", undefined);
+    setFieldValue("policies.runtime.token_claim", undefined);
+    setFieldValue("policies.write.owner_column", undefined);
+    setFieldValue("policies.write.token_claim", undefined);
+    setFieldValue("policies.delete.owner_column", undefined);
+    setFieldValue("policies.delete.token_claim", undefined);
+  }
+});
+
+// Watch ownerColumnValue to sync to form
+watch(ownerColumnValue, (val) => {
+  if (!enableOwnerColumn.value) return;
+  if (val && mainTable.value) {
+    const ownerCol = { table_name: mainTable.value, column: val, alias: val };
+    setFieldValue("policies.runtime.owner_column", ownerCol);
+    setFieldValue("policies.write.owner_column", ownerCol);
+    setFieldValue("policies.delete.owner_column", ownerCol);
+  } else {
+    setFieldValue("policies.runtime.owner_column", undefined);
+    setFieldValue("policies.write.owner_column", undefined);
+    setFieldValue("policies.delete.owner_column", undefined);
+  }
+});
+
+// Watch tokenClaimValue to sync to form
+watch(tokenClaimValue, (val) => {
+  if (!enableOwnerColumn.value) return;
+  if (val) {
+    setFieldValue("policies.runtime.token_claim", val);
+    setFieldValue("policies.write.token_claim", val);
+    setFieldValue("policies.delete.token_claim", val);
+  } else {
+    setFieldValue("policies.runtime.token_claim", undefined);
+    setFieldValue("policies.write.token_claim", undefined);
+    setFieldValue("policies.delete.token_claim", undefined);
+  }
+});
+
 // Check which steps are completed
 const isStepCompleted = (step: number): boolean => {
   if (step === 1) {
@@ -1460,6 +1603,37 @@ const onSubmit = async () => {
       }
     }
 
+    // Validate and propagate owner_column & token_claim
+    if (enableOwnerColumn.value) {
+      if (!ownerColumnValue.value || !tokenClaimValue.value) {
+        showError("ข้อมูล Owner Column ไม่ครบถ้วน", {
+          description:
+            "ต้องกรอกทั้ง Owner Column และ Token Claim หรือปิดการใช้งาน",
+        });
+        return;
+      }
+      const tableName = values.policies?.runtime?.query?.from?.table || "";
+      const ownerCol = {
+        table_name: tableName,
+        column: ownerColumnValue.value,
+        alias: ownerColumnValue.value,
+      };
+      setFieldValue("policies.runtime.owner_column", ownerCol);
+      setFieldValue("policies.runtime.token_claim", tokenClaimValue.value);
+      setFieldValue("policies.write.owner_column", ownerCol);
+      setFieldValue("policies.write.token_claim", tokenClaimValue.value);
+      setFieldValue("policies.delete.owner_column", ownerCol);
+      setFieldValue("policies.delete.token_claim", tokenClaimValue.value);
+    } else {
+      // Ensure they are cleared when disabled
+      setFieldValue("policies.runtime.owner_column", undefined);
+      setFieldValue("policies.runtime.token_claim", undefined);
+      setFieldValue("policies.write.owner_column", undefined);
+      setFieldValue("policies.write.token_claim", undefined);
+      setFieldValue("policies.delete.owner_column", undefined);
+      setFieldValue("policies.delete.token_claim", undefined);
+    }
+
     await dataApiInstance.post(
       `/v1/datasets/${datasetId.value}/versions`,
       values,
@@ -1533,1060 +1707,885 @@ watch(
   { deep: true },
 );
 
+let resizeObserver: ResizeObserver | null = null;
+
 onMounted(() => {
   loadSources();
   loadRoles();
 });
+
+onBeforeUnmount(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+});
+
+watch(
+  leftPanelRef,
+  (el) => {
+    if (resizeObserver) resizeObserver.disconnect();
+    if (el) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          leftPanelHeight.value = entry.contentRect.height + 32; // +padding
+        }
+      });
+      resizeObserver.observe(el);
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
   <Sheet v-model:open="isOpen" @update:open="(open) => !open && closeSheet()">
-    <SheetContent class="w-full sm:max-w-3xl p-6 overflow-y-auto">
-      <SheetHeader>
-        <SheetTitle>สร้าง Dataset Version</SheetTitle>
-        <SheetDescription>Dataset: {{ datasetId }}</SheetDescription>
+    <SheetContent class="w-full sm:max-w-3xl p-0 overflow-hidden flex flex-col">
+      <SheetHeader class="px-6 pt-6 pb-4">
+        <div class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
+          >
+            <Notebook class="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <SheetTitle class="text-xl">สร้าง Version ของชุดข้อมูล</SheetTitle>
+            <SheetDescription>ชุดข้อมูล: {{ datasetId }}</SheetDescription>
+          </div>
+        </div>
       </SheetHeader>
 
-      <div class="py-6 space-y-6">
-        <!-- Stepper -->
-        <Stepper v-model="currentStep" class="flex w-full items-start gap-2">
-          <StepperItem
-            v-for="step in steps"
-            :key="step.id"
-            :step="step.id"
-            class="relative flex w-full flex-col items-center justify-center"
-          >
-            <StepperSeparator
-              v-if="step.id !== steps.length"
-              class="absolute left-[calc(50%+20px)] right-[calc(-50%+20px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
-            />
-            <StepperTrigger as-child>
-              <Button
-                :variant="
-                  currentStep === step.id
-                    ? 'default'
-                    : currentStep > step.id
-                      ? 'default'
-                      : 'outline'
-                "
-                size="icon"
-                class="z-10 rounded-full shrink-0"
-                :class="[
-                  currentStep > step.id && 'bg-primary',
-                  !canAccessStep(step.id) && 'opacity-50 cursor-not-allowed',
-                ]"
-                :disabled="!canAccessStep(step.id)"
-                @click="canAccessStep(step.id) ? goToStep(step.id) : null"
-              >
-                <Check v-if="currentStep > step.id" class="h-5 w-5" />
-                <span v-else>{{ step.id }}</span>
-              </Button>
-            </StepperTrigger>
-            <div class="mt-2 flex flex-col items-center text-center">
-              <StepperTitle
-                :class="[
-                  currentStep >= step.id
-                    ? 'text-primary'
-                    : 'text-muted-foreground',
-                  !canAccessStep(step.id) && currentStep !== step.id
-                    ? 'opacity-50'
-                    : '',
-                ]"
-                class="text-sm font-semibold"
-              >
-                {{ step.title }}
-              </StepperTitle>
-              <StepperDescription
-                :class="[
-                  !canAccessStep(step.id) && currentStep !== step.id
-                    ? 'opacity-50'
-                    : '',
-                ]"
-                class="sr-only md:not-sr-only text-xs text-muted-foreground"
-              >
-                {{ step.description }}
-              </StepperDescription>
-            </div>
-          </StepperItem>
-        </Stepper>
+      <Separator />
 
-        <!-- Step Content -->
-        <div class="min-h-[400px]">
-          <!-- Step 1: Basic Info -->
-          <div v-show="currentStep === 1" class="space-y-4">
-            <!-- Version Name -->
-            <FormField v-slot="{ componentField }" name="version">
-              <FormItem>
-                <FormLabel
-                  >Version Name <span class="text-red-500">*</span></FormLabel
-                >
-                <FormControl>
-                  <Input
-                    v-bind="componentField"
-                    placeholder="v1.0.0"
-                    class="font-mono"
-                  />
-                </FormControl>
-                <FormDescription>
-                  รูปแบบตัวอย่าง: v1.0.0, v2.1.3
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <!-- Database -->
-            <FormField v-slot="{ componentField }" name="source_id">
-              <FormItem>
-                <FormLabel
-                  >Database <span class="text-red-500">*</span></FormLabel
-                >
-                <Select v-bind="componentField" :disabled="isLoadingSources">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="เลือก Database" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem
-                      v-for="source in sources"
-                      :key="source.id"
-                      :value="source.id"
-                    >
-                      {{ source.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-
-            <!-- Status -->
-            <FormField v-slot="{ componentField }" name="status">
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select v-bind="componentField">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="active">ใช้งาน (Active)</SelectItem>
-                    <SelectItem value="preview">ตัวอย่าง (Preview)</SelectItem>
-                    <SelectItem value="deprecated"
-                      >เลิกใช้ (Deprecated)</SelectItem
-                    >
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-          </div>
-
-          <!-- Step 2: Schema -->
-          <div v-show="currentStep === 2" class="space-y-4">
-            <div class="rounded-lg border border-muted bg-muted/50 p-4">
-              <p class="text-sm text-muted-foreground">
-                <strong>คำแนะนำ:</strong> เลือก Schema และ Table จากด้านซ้าย
-                จากนั้นคลิกเพิ่ม Column ที่ต้องการ หรือเพิ่มทั้ง Table
-              </p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <!-- Left: Table Selection -->
-              <div class="space-y-4 border rounded-lg p-4 bg-muted/20">
-                <h3 class="font-semibold text-sm">เลือก Table & Columns</h3>
-
-                <!-- เลือก Schema -->
-                <div class="space-y-2">
-                  <Label>Schema <span class="text-red-500">*</span></Label>
-                  <Select
-                    v-model="selectedSchema"
-                    :disabled="!values.source_id || isLoadingSchemas"
-                    @update:model-value="loadTables"
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="เลือก Schema" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="schema in schemas"
-                        :key="schema.schema"
-                        :value="schema.schema"
-                      >
-                        {{ schema.schema }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p
-                    v-if="!values.source_id"
-                    class="text-xs text-muted-foreground"
-                  >
-                    กรุณาเลือก Database ใน Step 1 ก่อน
-                  </p>
-                  <p
-                    v-else-if="isLoadingSchemas"
-                    class="text-xs text-muted-foreground"
-                  >
-                    กำลังโหลด Schemas...
-                  </p>
-                  <p
-                    v-else-if="schemas.length === 0"
-                    class="text-xs text-muted-foreground"
-                  >
-                    ไม่พบ Schema
-                  </p>
-                </div>
-
-                <!-- เลือก Table -->
-                <div class="space-y-2">
-                  <Label>Table <span class="text-red-500">*</span></Label>
-                  <Select
-                    v-model="selectedTable"
-                    :disabled="!selectedSchema || isLoadingTables"
-                    @update:model-value="loadColumns"
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="เลือก Table" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        v-for="table in tables"
-                        :key="table.table_name"
-                        :value="table.table_name"
-                      >
-                        {{ table.table_name }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <!-- แสดง Columns -->
-                <div v-if="columns.length > 0" class="space-y-2">
-                  <div class="flex items-center justify-between">
-                    <Label>Columns ({{ columns.length }})</Label>
-                    <Button
-                      @click="addAllColumnsFromTable"
-                      size="sm"
-                      variant="secondary"
-                    >
-                      <Plus class="h-3 w-3 mr-1" />เพิ่มทั้งหมด
-                    </Button>
-                  </div>
-                  <div
-                    class="max-h-80 overflow-y-auto space-y-1 border rounded p-2 bg-background"
-                  >
-                    <div
-                      v-for="column in columns"
-                      :key="column.column_name"
-                      class="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
-                      @click="addColumnFromList(column)"
-                    >
-                      <div class="flex-1">
-                        <code class="text-sm font-medium">{{
-                          column.column_name
-                        }}</code>
-                        <span class="text-muted-foreground text-xs ml-2">{{
-                          column.data_type
-                        }}</span>
-                        <Badge
-                          v-if="!column.is_nullable"
-                          variant="outline"
-                          class="ml-2 text-xs"
-                          >NOT NULL</Badge
-                        >
-                      </div>
-                      <Plus class="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  v-else-if="selectedTable"
-                  class="text-sm text-muted-foreground text-center py-8"
-                >
-                  กำลังโหลด columns...
-                </div>
-              </div>
-
-              <!-- Right: Selected Tables & Columns -->
-              <div class="space-y-4 border rounded-lg p-4 bg-background">
-                <div class="flex items-center justify-between">
-                  <h3 class="font-semibold text-sm">Tables ที่เลือก</h3>
-                  <Badge variant="secondary"
-                    >{{ Object.keys(groupedColumns).length }} Tables</Badge
-                  >
-                </div>
-
-                <div
-                  v-if="Object.keys(groupedColumns).length > 0"
-                  class="space-y-3 max-h-96 overflow-y-auto"
-                >
-                  <div
-                    v-for="(cols, tableName) in groupedColumns"
-                    :key="tableName"
-                    class="border rounded-lg p-3 space-y-2"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <code class="text-sm font-semibold">{{
-                          tableName
-                        }}</code>
-                        <Badge variant="outline" class="text-xs"
-                          >{{ cols.length }} cols</Badge
-                        >
-                      </div>
-                      <Button
-                        @click="removeTableColumns(tableName)"
-                        variant="ghost"
-                        size="sm"
-                        title="ลบ Table นี้"
-                      >
-                        <X class="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                    <div class="space-y-1 pl-3">
-                      <div
-                        v-for="(col, i) in cols"
-                        :key="i"
-                        class="flex items-center justify-between text-sm py-1 hover:bg-muted/50 rounded px-2"
-                      >
-                        <div class="flex-1">
-                          <code class="text-xs">{{ col.name }}</code>
-                          <span class="text-muted-foreground text-xs ml-2"
-                            >({{ col.type }})</span
-                          >
-                        </div>
-                        <button
-                          @click="
-                            removeColumn(
-                              (values.schema?.columns || []).indexOf(col),
-                            )
-                          "
-                          class="text-muted-foreground hover:text-destructive"
-                        >
-                          <X class="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  v-else
-                  class="text-sm text-muted-foreground text-center py-12"
-                >
-                  <div class="text-4xl mb-2">📋</div>
-                  ยังไม่ได้เลือก columns
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 3: Views -->
-          <div v-show="currentStep === 3" class="space-y-4">
-            <div class="rounded-lg border border-muted bg-muted/50 p-4">
-              <p class="text-sm text-muted-foreground">
-                <strong>คำแนะนำ:</strong> สร้าง View จาก Tables และ Columns
-                ที่เลือกใน Step 2
-              </p>
-            </div>
-
-            <div class="flex gap-2">
-              <Input
-                v-model="newViewName"
-                placeholder="ชื่อ View เช่น gender_stats"
-                @keyup.enter="addView"
-              />
-              <Button @click="addView" size="sm"
-                ><Plus class="h-4 w-4 mr-1" />เพิ่ม View</Button
-              >
-            </div>
-
-            <div
-              v-if="Object.keys(values.policies?.views || {}).length"
-              class="space-y-4"
+      <div class="flex-1 overflow-y-auto px-6 py-6">
+        <div class="space-y-6">
+          <!-- Stepper -->
+          <Stepper v-model="currentStep" class="flex w-full items-start gap-2">
+            <StepperItem
+              v-for="step in steps"
+              :key="step.id"
+              :step="step.id"
+              class="relative flex w-full flex-col items-center justify-center"
             >
-              <div
-                v-for="(tables, viewName) in values.policies?.views || {}"
-                :key="String(viewName)"
-                class="border rounded p-4 space-y-3 bg-card"
-              >
-                <div class="flex justify-between items-center">
-                  <h3 class="font-semibold">{{ viewName }}</h3>
-                  <Button
-                    @click="removeView(String(viewName))"
-                    variant="ghost"
-                    size="sm"
-                    ><X class="h-4 w-4"
-                  /></Button>
-                </div>
+              <StepperSeparator
+                v-if="step.id !== steps.length"
+                class="absolute left-[calc(50%+20px)] right-[calc(-50%+20px)] top-5 block h-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
+              />
+              <StepperTrigger as-child>
+                <Button
+                  :variant="
+                    currentStep === step.id
+                      ? 'default'
+                      : currentStep > step.id
+                        ? 'default'
+                        : 'outline'
+                  "
+                  size="icon"
+                  class="z-10 rounded-full shrink-0"
+                  :class="[
+                    currentStep > step.id && 'bg-primary',
+                    !canAccessStep(step.id) && 'opacity-50 cursor-not-allowed',
+                  ]"
+                  :disabled="!canAccessStep(step.id)"
+                  @click="canAccessStep(step.id) ? goToStep(step.id) : null"
+                >
+                  <Check v-if="currentStep > step.id" class="h-5 w-5" />
+                  <span v-else>{{ step.id }}</span>
+                </Button>
+              </StepperTrigger>
+              <div class="mt-2 flex flex-col items-center text-center">
+                <StepperTitle
+                  :class="[
+                    currentStep >= step.id
+                      ? 'text-primary'
+                      : 'text-muted-foreground',
+                    !canAccessStep(step.id) && currentStep !== step.id
+                      ? 'opacity-50'
+                      : '',
+                  ]"
+                  class="text-sm font-semibold"
+                >
+                  {{ step.title }}
+                </StepperTitle>
+                <StepperDescription
+                  :class="[
+                    !canAccessStep(step.id) && currentStep !== step.id
+                      ? 'opacity-50'
+                      : '',
+                  ]"
+                  class="sr-only md:not-sr-only text-xs text-muted-foreground"
+                >
+                  {{ step.description }}
+                </StepperDescription>
+              </div>
+            </StepperItem>
+          </Stepper>
 
-                <div class="space-y-3">
+          <!-- Step Content -->
+          <div class="min-h-[400px]">
+            <!-- Step 1: Basic Info -->
+            <div v-show="currentStep === 1" class="space-y-4">
+              <!-- Version Name -->
+              <FormField v-slot="{ componentField }" name="version">
+                <FormItem>
+                  <FormLabel
+                    >Version <span class="text-red-500">*</span></FormLabel
+                  >
+                  <FormControl>
+                    <Input
+                      v-bind="componentField"
+                      placeholder="v1.0.0"
+                      class="font-mono"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    รูปแบบตัวอย่าง: v1.0.0, v2.1.3
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+
+              <!-- Database -->
+              <FormField v-slot="{ componentField }" name="source_id">
+                <FormItem>
+                  <FormLabel
+                    >ฐานข้อมูล <span class="text-red-500">*</span></FormLabel
+                  >
+                  <Select v-bind="componentField" :disabled="isLoadingSources">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือก ฐานข้อมูล" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem
+                        v-for="source in sources"
+                        :key="source.id"
+                        :value="source.id"
+                      >
+                        {{ source.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+
+              <!-- Status -->
+              <FormField v-slot="{ componentField }" name="status">
+                <FormItem>
+                  <FormLabel>สถานะ</FormLabel>
+                  <Select v-bind="componentField">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="active">เปิดใช้งาน</SelectItem>
+                      <SelectItem value="preview">แบบร่าง</SelectItem>
+                      <SelectItem value="deprecated">ปิดใช้งาน</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+            </div>
+
+            <!-- Step 2: Schema -->
+            <div v-show="currentStep === 2" class="space-y-4">
+              <div class="rounded-lg border border-muted bg-muted/50 p-4">
+                <p class="text-sm text-muted-foreground">
+                  <strong>คำแนะนำ:</strong> เลือก Schema และ Table จากด้านซ้าย
+                  จากนั้นคลิกเพิ่ม Column ที่ต้องการ หรือเพิ่มทั้ง Table
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 items-start">
+                <!-- Left: Table Selection -->
+                <div
+                  ref="leftPanelRef"
+                  class="space-y-4 border rounded-lg p-4 bg-muted/20"
+                >
+                  <h3 class="font-semibold text-sm">เลือก Table & Columns</h3>
+
+                  <!-- เลือก Schema -->
                   <div class="space-y-2">
-                    <Label
-                      >เลือก Table <span class="text-red-500">*</span></Label
-                    >
+                    <Label>Schema <span class="text-red-500">*</span></Label>
                     <Select
-                      v-model="
-                        viewTableSelections[String(viewName)]!.table_name
-                      "
+                      v-model="selectedSchema"
+                      :disabled="!values.source_id || isLoadingSchemas"
+                      @update:model-value="loadTables"
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือก Schema" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="schema in schemas"
+                          :key="schema.schema"
+                          :value="schema.schema"
+                        >
+                          {{ schema.schema }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p
+                      v-if="!values.source_id"
+                      class="text-xs text-muted-foreground"
+                    >
+                      กรุณาเลือก Database ใน Step 1 ก่อน
+                    </p>
+                    <p
+                      v-else-if="isLoadingSchemas"
+                      class="text-xs text-muted-foreground"
+                    >
+                      กำลังโหลด Schemas...
+                    </p>
+                    <p
+                      v-else-if="schemas.length === 0"
+                      class="text-xs text-muted-foreground"
+                    >
+                      ไม่พบ Schema
+                    </p>
+                  </div>
+
+                  <!-- เลือก Table -->
+                  <div class="space-y-2">
+                    <Label>Table <span class="text-red-500">*</span></Label>
+                    <Select
+                      v-model="selectedTable"
+                      :disabled="!selectedSchema || isLoadingTables"
+                      @update:model-value="loadColumns"
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="เลือก Table" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem
-                          v-for="table in availableTables"
-                          :key="table"
-                          :value="table"
-                          :disabled="isTableInView(String(viewName), table)"
+                          v-for="table in tables"
+                          :key="table.table_name"
+                          :value="table.table_name"
                         >
-                          {{ table }}
-                          <span
-                            v-if="isTableInView(String(viewName), table)"
-                            class="text-xs text-muted-foreground ml-2"
-                          >
-                            (มีแล้ว)
-                          </span>
+                          {{ table.table_name }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    <p
-                      v-if="availableTables.length === 0"
-                      class="text-xs text-muted-foreground"
+                  </div>
+
+                  <!-- แสดง Columns -->
+                  <div v-if="columns.length > 0" class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <Label>Columns ({{ columns.length }})</Label>
+                      <Button
+                        @click="addAllColumnsFromTable"
+                        size="sm"
+                        variant="secondary"
+                      >
+                        <Plus class="h-3 w-3 mr-1" />เพิ่มทั้งหมด
+                      </Button>
+                    </div>
+                    <div
+                      class="max-h-80 overflow-y-auto space-y-1 border rounded p-2 bg-background"
                     >
-                      ไม่มี Table ให้เลือก - กรุณาเพิ่ม Table ใน Step 2 ก่อน
-                    </p>
+                      <div
+                        v-for="column in columns"
+                        :key="column.column_name"
+                        class="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
+                        @click="addColumnFromList(column)"
+                      >
+                        <div class="flex-1">
+                          <code class="text-sm font-medium">{{
+                            column.column_name
+                          }}</code>
+                          <span class="text-muted-foreground text-xs ml-2">{{
+                            column.data_type
+                          }}</span>
+                          <Badge
+                            v-if="!column.is_nullable"
+                            variant="outline"
+                            class="ml-2 text-xs"
+                            >NOT NULL</Badge
+                          >
+                        </div>
+                        <Plus class="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
                   </div>
 
                   <div
-                    v-if="
-                      viewTableSelections[String(viewName)]?.table_name &&
-                      getColumnsForViewTable(String(viewName)).value.length > 0
-                    "
-                    class="space-y-2"
+                    v-else-if="selectedTable"
+                    class="text-sm text-muted-foreground text-center py-8"
                   >
-                    <Label
-                      >เลือก Columns <span class="text-red-500">*</span></Label
+                    กำลังโหลด columns...
+                  </div>
+                </div>
+
+                <!-- Right: Selected Tables & Columns -->
+                <div
+                  class="border rounded-lg p-4 bg-background overflow-y-auto"
+                  :style="
+                    leftPanelHeight > 0
+                      ? { maxHeight: leftPanelHeight + 'px' }
+                      : {}
+                  "
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-semibold text-sm">Tables ที่เลือก</h3>
+                    <Badge variant="secondary"
+                      >{{ Object.keys(groupedColumns).length }} Tables</Badge
                     >
+                  </div>
+
+                  <div
+                    v-if="Object.keys(groupedColumns).length > 0"
+                    class="space-y-3"
+                  >
                     <div
-                      class="border rounded p-3 space-y-2 bg-background max-h-60 overflow-y-auto"
+                      v-for="(cols, tableName) in groupedColumns"
+                      :key="tableName"
+                      class="border rounded-lg p-3 space-y-2"
                     >
-                      <div
-                        v-for="col in getColumnsForViewTable(String(viewName))
-                          .value"
-                        :key="col"
-                        class="flex items-center space-x-2 p-2 hover:bg-muted rounded cursor-pointer"
-                      >
-                        <Checkbox
-                          :id="`view-${viewName}-col-${col}`"
-                          :model-value="
-                            isViewColumnSelected(String(viewName), col)
-                          "
-                          @update:model-value="
-                            () => toggleViewColumn(String(viewName), col)
-                          "
-                        />
-                        <Label
-                          :for="`view-${viewName}-col-${col}`"
-                          class="flex-1 font-mono text-sm cursor-pointer"
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <code class="text-sm font-semibold">{{
+                            tableName
+                          }}</code>
+                          <Badge variant="outline" class="text-xs"
+                            >{{ cols.length }} cols</Badge
+                          >
+                        </div>
+                        <Button
+                          @click="removeTableColumns(tableName)"
+                          variant="ghost"
+                          size="sm"
+                          title="ลบ Table นี้"
                         >
-                          {{ col }}
-                        </Label>
+                          <X class="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
+                      <div class="space-y-1 pl-3">
+                        <div
+                          v-for="(col, i) in cols"
+                          :key="i"
+                          class="flex items-center justify-between text-sm py-1 hover:bg-muted/50 rounded px-2"
+                        >
+                          <div class="flex-1">
+                            <code class="text-xs">{{ col.name }}</code>
+                            <span class="text-muted-foreground text-xs ml-2"
+                              >({{ col.type }})</span
+                            >
+                          </div>
+                          <button
+                            @click="
+                              removeColumn(
+                                (values.schema?.columns || []).indexOf(col),
+                              )
+                            "
+                            class="text-muted-foreground hover:text-destructive"
+                          >
+                            <X class="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-else
+                    class="text-sm text-muted-foreground text-center py-12"
+                  >
+                    <ClipboardList
+                      class="h-10 w-10 mx-auto mb-2 text-muted-foreground/50"
+                    />
+                    ยังไม่ได้เลือก columns
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Views -->
+            <div v-show="currentStep === 3" class="space-y-4">
+              <div class="rounded-lg border border-muted bg-muted/50 p-4">
+                <p class="text-sm text-muted-foreground">
+                  <strong>คำแนะนำ:</strong> สร้าง View จาก Tables และ Columns
+                  ที่เลือกใน Step 2
+                </p>
+              </div>
+
+              <div class="flex gap-2">
+                <Input
+                  v-model="newViewName"
+                  placeholder="ชื่อ View เช่น gender_stats"
+                  @keyup.enter="addView"
+                />
+                <Button @click="addView" size="sm"
+                  ><Plus class="h-4 w-4 mr-1" />เพิ่ม View</Button
+                >
+              </div>
+
+              <div
+                v-if="Object.keys(values.policies?.views || {}).length"
+                class="space-y-4"
+              >
+                <div
+                  v-for="(tables, viewName) in values.policies?.views || {}"
+                  :key="String(viewName)"
+                  class="border rounded p-4 space-y-3 bg-card"
+                >
+                  <div class="flex justify-between items-center">
+                    <h3 class="font-semibold">{{ viewName }}</h3>
+                    <Button
+                      @click="removeView(String(viewName))"
+                      variant="ghost"
+                      size="sm"
+                      ><X class="h-4 w-4"
+                    /></Button>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div class="space-y-2">
+                      <Label
+                        >เลือก Table <span class="text-red-500">*</span></Label
+                      >
+                      <Select
+                        v-model="
+                          viewTableSelections[String(viewName)]!.table_name
+                        "
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือก Table" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="table in availableTables"
+                            :key="table"
+                            :value="table"
+                            :disabled="isTableInView(String(viewName), table)"
+                          >
+                            {{ table }}
+                            <span
+                              v-if="isTableInView(String(viewName), table)"
+                              class="text-xs text-muted-foreground ml-2"
+                            >
+                              (มีแล้ว)
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p
+                        v-if="availableTables.length === 0"
+                        class="text-xs text-muted-foreground"
+                      >
+                        ไม่มี Table ให้เลือก - กรุณาเพิ่ม Table ใน Step 2 ก่อน
+                      </p>
                     </div>
 
                     <div
                       v-if="
-                        viewTableSelections[String(viewName)]?.columns &&
-                        viewTableSelections[String(viewName)]!.columns.length >
+                        viewTableSelections[String(viewName)]?.table_name &&
+                        getColumnsForViewTable(String(viewName)).value.length >
                           0
                       "
-                      class="flex flex-wrap gap-2 p-2 border rounded bg-primary/5"
+                      class="space-y-2"
                     >
-                      <span class="text-xs text-muted-foreground"
-                        >เลือกแล้ว:</span
-                      >
-                      <Badge
-                        v-for="col in viewTableSelections[String(viewName)]!
-                          .columns"
-                        :key="col"
-                        variant="secondary"
-                      >
-                        {{ col }}
-                        <button
-                          @click="removeViewColumn(String(viewName), col)"
-                          class="ml-1"
+                      <div class="flex items-center justify-between">
+                        <Label
+                          >เลือก Columns
+                          <span class="text-red-500">*</span></Label
                         >
-                          <X class="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <Button
-                    @click="addTableToView(String(viewName))"
-                    :disabled="
-                      !viewTableSelections[String(viewName)]?.table_name ||
-                      !viewTableSelections[String(viewName)]?.columns?.length
-                    "
-                    size="sm"
-                    class="w-full"
-                  >
-                    <Plus class="h-4 w-4 mr-1" />เพิ่ม Table เข้า View
-                  </Button>
-                </div>
-
-                <div
-                  v-if="Array.isArray(tables) && tables.length"
-                  class="space-y-2 pt-2 border-t"
-                >
-                  <Label class="text-sm font-medium">Tables ใน View นี้:</Label>
-                  <div class="space-y-1">
-                    <div
-                      v-for="(table, ti) in tables"
-                      :key="ti"
-                      class="text-sm p-3 bg-muted rounded flex justify-between items-start"
-                    >
-                      <div class="flex-1">
-                        <div class="font-semibold font-mono mb-1">
-                          {{ (table as any).table_name }}
+                        <Button
+                          @click="
+                            () => {
+                              const vn = String(viewName);
+                              const cols = getColumnsForViewTable(vn).value;
+                              if (!viewTableSelections[vn]) {
+                                viewTableSelections[vn] = {
+                                  table_name: '',
+                                  columns: [],
+                                };
+                              }
+                              viewTableSelections[vn]!.columns = [...cols];
+                            }
+                          "
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <Plus class="h-3 w-3 mr-1" />เพิ่มทั้งหมด
+                        </Button>
+                      </div>
+                      <div
+                        class="border rounded p-3 space-y-2 bg-background max-h-60 overflow-y-auto"
+                      >
+                        <div
+                          v-for="col in getColumnsForViewTable(String(viewName))
+                            .value"
+                          :key="col"
+                          class="flex items-center space-x-2 p-2 hover:bg-muted rounded cursor-pointer"
+                        >
+                          <Checkbox
+                            :id="`view-${viewName}-col-${col}`"
+                            :model-value="
+                              isViewColumnSelected(String(viewName), col)
+                            "
+                            @update:model-value="
+                              () => toggleViewColumn(String(viewName), col)
+                            "
+                          />
+                          <Label
+                            :for="`view-${viewName}-col-${col}`"
+                            class="flex-1 font-mono text-sm cursor-pointer"
+                          >
+                            {{ col }}
+                          </Label>
                         </div>
-                        <div class="text-xs text-muted-foreground">
-                          {{ (table as any).columns.join(", ") }}
-                        </div>
-                      </div>
-                      <button
-                        @click="removeTableFromView(String(viewName), ti)"
-                        class="text-destructive hover:text-destructive/80"
-                      >
-                        <X class="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 4: Access Policies -->
-          <div v-show="currentStep === 4" class="space-y-4">
-            <div class="rounded-lg border border-muted bg-muted/50 p-4">
-              <p class="text-sm text-muted-foreground">
-                <strong>คำแนะนำ:</strong> กำหนดสิทธิ์การเข้าถึงข้อมูลสำหรับแต่ละ
-                Role ว่า Role ไหนสามารถทำอะไรได้บ้าง และสามารถดู Views
-                ไหนได้บ้าง
-              </p>
-            </div>
-
-            <div class="border rounded-lg p-4 space-y-4 bg-muted/20">
-              <h3 class="font-semibold text-sm">สร้าง Policy ใหม่</h3>
-              <div class="space-y-2">
-                <Label>Role <span class="text-red-500">*</span></Label>
-                <Select v-model="newPolicy.role">
-                  <SelectTrigger :disabled="isLoadingRoles">
-                    <SelectValue placeholder="เลือก Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div
-                      v-if="isLoadingRoles"
-                      class="flex items-center justify-center py-2"
-                    >
-                      <Loader2 class="h-4 w-4 animate-spin" />
-                      <span class="ml-2 text-sm text-muted-foreground"
-                        >กำลังโหลด...</span
-                      >
-                    </div>
-                    <SelectItem
-                      v-else
-                      v-for="role in roles"
-                      :key="role.id"
-                      :value="role.name"
-                      class="cursor-pointer"
-                    >
-                      {{ role.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div class="space-y-3">
-                <Label class="text-sm font-medium">สิทธิ์การใช้งาน</Label>
-                <div class="grid grid-cols-3 gap-4">
-                  <div class="flex items-center space-x-2">
-                    <Checkbox
-                      :model-value="newPolicy.can_view"
-                      @update:model-value="
-                        (val) => (newPolicy.can_view = !!val)
-                      "
-                      id="can_view"
-                    />
-                    <Label for="can_view" class="font-normal cursor-pointer"
-                      >Can View</Label
-                    >
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <Checkbox
-                      :model-value="newPolicy.can_edit"
-                      @update:model-value="
-                        (val) => (newPolicy.can_edit = !!val)
-                      "
-                      id="can_edit"
-                    />
-                    <Label for="can_edit" class="font-normal cursor-pointer"
-                      >Can Edit</Label
-                    >
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <Checkbox
-                      :model-value="newPolicy.can_delete"
-                      @update:model-value="
-                        (val) => (newPolicy.can_delete = !!val)
-                      "
-                      id="can_delete"
-                    />
-                    <Label for="can_delete" class="font-normal cursor-pointer"
-                      >Can Delete</Label
-                    >
-                  </div>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <Label class="text-sm font-medium"
-                  >อนุญาตให้ดู Views <span class="text-red-500">*</span></Label
-                >
-                <p class="text-xs text-muted-foreground">
-                  เลือก View ที่ Role นี้สามารถเข้าถึงได้
-                </p>
-
-                <div
-                  v-if="availableViews.length > 0"
-                  class="border rounded p-3 space-y-2 bg-background max-h-60 overflow-y-auto"
-                >
-                  <div
-                    v-for="view in availableViews"
-                    :key="view"
-                    :class="[
-                      'flex items-center space-x-2 p-2 rounded',
-                      isViewAlreadyInPolicy(view)
-                        ? 'bg-destructive/10 opacity-60 cursor-not-allowed'
-                        : 'hover:bg-muted cursor-pointer',
-                    ]"
-                  >
-                    <Checkbox
-                      :id="`view-${view}`"
-                      :model-value="isViewSelected(view)"
-                      :disabled="isViewAlreadyInPolicy(view)"
-                      @update:model-value="() => toggleViewInPolicy(view)"
-                    />
-                    <Label
-                      :for="`view-${view}`"
-                      :class="[
-                        'flex-1 font-mono text-sm',
-                        isViewAlreadyInPolicy(view)
-                          ? 'cursor-not-allowed'
-                          : 'cursor-pointer',
-                      ]"
-                    >
-                      {{ view }}
-                      <Badge
-                        v-if="isViewAlreadyInPolicy(view)"
-                        variant="destructive"
-                        class="ml-2 text-xs"
-                      >
-                        มี Policy แล้ว
-                      </Badge>
-                    </Label>
-                  </div>
-                </div>
-
-                <div
-                  v-else
-                  class="text-sm text-muted-foreground text-center py-4 border rounded bg-muted/50"
-                >
-                  ไม่มี View ให้เลือก - กรุณาสร้าง View ใน Step 3 ก่อน
-                </div>
-
-                <div
-                  v-if="newPolicy.allow_view.length > 0"
-                  class="flex flex-wrap gap-2 p-2 border rounded bg-primary/5"
-                >
-                  <span class="text-xs text-muted-foreground">เลือกแล้ว:</span>
-                  <Badge
-                    v-for="view in newPolicy.allow_view"
-                    :key="view"
-                    variant="secondary"
-                  >
-                    {{ view }}
-                  </Badge>
-                </div>
-              </div>
-
-              <Button
-                @click="addPolicy"
-                :disabled="!newPolicy.role || newPolicy.allow_view.length === 0"
-                class="w-full"
-              >
-                <Plus class="h-4 w-4 mr-1" />เพิ่ม Policy
-              </Button>
-            </div>
-
-            <!-- แสดง Policies ที่สร้างแล้ว -->
-            <div v-if="(values.access_policies || []).length" class="space-y-3">
-              <div class="flex items-center justify-between">
-                <Label class="text-sm font-medium">Policies ที่สร้างแล้ว</Label>
-                <Badge variant="secondary"
-                  >{{ (values.access_policies || []).length }} policies</Badge
-                >
-              </div>
-
-              <div class="space-y-2">
-                <div
-                  v-for="(policy, i) in values.access_policies"
-                  :key="i"
-                  class="border rounded-lg p-4 space-y-2 bg-card hover:shadow-sm transition-shadow"
-                >
-                  <div class="flex justify-between items-start">
-                    <div class="space-y-1 flex-1">
-                      <div class="flex items-center gap-2">
-                        <Badge variant="default">{{ policy.role }}</Badge>
                       </div>
 
-                      <div class="flex gap-2 text-xs">
-                        <span
-                          v-if="policy.can_view"
-                          class="text-green-600 dark:text-green-400"
-                          >✓ View</span
-                        >
-                        <span
-                          v-if="policy.can_edit"
-                          class="text-blue-600 dark:text-blue-400"
-                          >✓ Edit</span
-                        >
-                        <span
-                          v-if="policy.can_delete"
-                          class="text-red-600 dark:text-red-400"
-                          >✓ Delete</span
-                        >
-                      </div>
-
-                      <div class="flex flex-wrap gap-1 mt-2">
-                        <span class="text-xs text-muted-foreground"
-                          >อนุญาต Views:</span
+                      <div
+                        v-if="
+                          viewTableSelections[String(viewName)]?.columns &&
+                          viewTableSelections[String(viewName)]!.columns
+                            .length > 0
+                        "
+                        class="flex flex-wrap items-center gap-2 p-2 border rounded bg-primary/5"
+                      >
+                        <span class="text-xs text-muted-foreground leading-none"
+                          >เลือกแล้ว:</span
                         >
                         <Badge
-                          v-for="view in policy.allow_view"
-                          :key="view"
+                          v-for="col in viewTableSelections[String(viewName)]!
+                            .columns"
+                          :key="col"
                           variant="secondary"
-                          class="text-xs"
                         >
-                          {{ view }}
+                          {{ col }}
+                          <button
+                            @click="removeViewColumn(String(viewName), col)"
+                            class="ml-1"
+                          >
+                            <X class="h-3 w-3" />
+                          </button>
                         </Badge>
                       </div>
                     </div>
 
                     <Button
-                      @click="removePolicy(i)"
-                      variant="ghost"
+                      @click="addTableToView(String(viewName))"
+                      :disabled="
+                        !viewTableSelections[String(viewName)]?.table_name ||
+                        !viewTableSelections[String(viewName)]?.columns?.length
+                      "
                       size="sm"
-                      class="text-destructive hover:text-destructive"
+                      class="w-full"
                     >
-                      <X class="h-4 w-4" />
+                      <Plus class="h-4 w-4 mr-1" />เพิ่ม Table เข้า View
                     </Button>
                   </div>
+
+                  <div
+                    v-if="Array.isArray(tables) && tables.length"
+                    class="space-y-2 pt-2 border-t"
+                  >
+                    <Label class="text-sm font-medium"
+                      >Tables ใน View นี้:</Label
+                    >
+                    <div class="space-y-1">
+                      <div
+                        v-for="(table, ti) in tables"
+                        :key="ti"
+                        class="text-sm p-3 bg-muted rounded flex justify-between items-start"
+                      >
+                        <div class="flex-1">
+                          <div class="font-semibold font-mono mb-1">
+                            {{ (table as any).table_name }}
+                          </div>
+                          <div class="text-xs text-muted-foreground">
+                            {{ (table as any).columns.join(", ") }}
+                          </div>
+                        </div>
+                        <button
+                          @click="removeTableFromView(String(viewName), ti)"
+                          class="text-destructive hover:text-destructive/80"
+                        >
+                          <X class="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Step 5: Runtime Policies -->
-          <div v-show="currentStep === 5" class="space-y-6">
-            <div class="rounded-lg border border-muted bg-muted/50 p-4">
-              <p class="text-sm text-muted-foreground">
-                <strong>คำแนะนำ:</strong> กำหนด Table หลัก และเชื่อม Tables
-                อื่นๆ เข้าด้วยกัน
-              </p>
-            </div>
+            <!-- Step 4: Access Policies -->
+            <div v-show="currentStep === 4" class="space-y-4">
+              <div class="rounded-lg border border-muted bg-muted/50 p-4">
+                <p class="text-sm text-muted-foreground">
+                  <strong>คำแนะนำ:</strong>
+                  กำหนดสิทธิ์การเข้าถึงข้อมูลสำหรับแต่ละ Role ว่า Role
+                  ไหนสามารถทำอะไรได้บ้าง และสามารถดู Views ไหนได้บ้าง
+                </p>
+              </div>
 
-            <!-- Default View & Key Field -->
-            <div class="grid grid-cols-2 gap-4">
-              <FormField
-                v-slot="{ componentField }"
-                name="policies.runtime.default_view"
-              >
-                <FormItem>
-                  <FormLabel
-                    >Default View <span class="text-red-500">*</span></FormLabel
-                  >
-                  <Select v-bind="componentField">
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือก View" />
-                      </SelectTrigger>
-                    </FormControl>
+              <div class="border rounded-lg p-4 space-y-4 bg-muted/20">
+                <h3 class="font-semibold text-sm">สร้าง Policy ใหม่</h3>
+                <div class="space-y-2">
+                  <Label>Role <span class="text-red-500">*</span></Label>
+                  <Select v-model="newPolicy.role">
+                    <SelectTrigger :disabled="isLoadingRoles">
+                      <SelectValue placeholder="เลือก Role" />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem
-                        v-for="view in availableViews"
-                        :key="view"
-                        :value="view"
+                      <div
+                        v-if="isLoadingRoles"
+                        class="flex items-center justify-center py-2"
                       >
-                        {{ view }}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription class="text-xs">
-                    View ที่จะใช้เป็นค่าเริ่มต้น
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-
-              <FormField
-                v-slot="{ componentField }"
-                name="policies.runtime.key_field"
-              >
-                <FormItem>
-                  <FormLabel
-                    >Index <span class="text-red-500">*</span></FormLabel
-                  >
-                  <Select v-bind="componentField">
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือก Column" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+                        <Loader2 class="h-4 w-4 animate-spin" />
+                        <span class="ml-2 text-sm text-muted-foreground"
+                          >กำลังโหลด...</span
+                        >
+                      </div>
                       <SelectItem
-                        v-for="col in values.schema?.columns || []"
-                        :key="`${col.table_name}.${col.name}`"
-                        :value="`${col.table_name}.${col.name}`"
+                        v-else
+                        v-for="role in roles"
+                        :key="role.id"
+                        :value="role.name"
                         class="cursor-pointer"
                       >
-                        <span class="font-mono">{{ col.name }}</span>
-                        <span class="text-xs text-muted-foreground ml-2"
-                          >({{ col.table_name }})</span
-                        >
+                        {{ role.name }}
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription class="text-xs">
-                    Column ที่ใช้ในการค้นหาข้อมูล (เช่น id, email, username)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-            </div>
-
-            <div
-              v-if="availableViews.length === 0"
-              class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
-            >
-              <p class="text-sm text-yellow-700 dark:text-yellow-400">
-                ⚠️ <strong>ยังไม่มี View:</strong> กรุณาสร้าง View ใน Step 3
-                ก่อน
-              </p>
-            </div>
-
-            <div
-              v-if="(values.schema?.columns || []).length === 0"
-              class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
-            >
-              <p class="text-sm text-yellow-700 dark:text-yellow-400">
-                ⚠️ <strong>ยังไม่มี Columns:</strong> กรุณาเลือก Columns ใน Step
-                2 ก่อน
-              </p>
-            </div>
-
-            <!-- เชื่อม Tables -->
-            <div class="space-y-4 border rounded-lg p-4 bg-background">
-              <h3 class="font-semibold">เชื่อม Tables เข้าด้วยกัน</h3>
-
-              <!-- เลือก Table หลัก -->
-              <div class="space-y-2">
-                <Label
-                  >1. เลือก Table หลัก
-                  <span class="text-red-500">*</span></Label
-                >
-                <p class="text-xs text-muted-foreground">
-                  Table ที่จะดึงข้อมูลหลัก
-                </p>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <Button
-                    v-for="table in availableTables"
-                    :key="table"
-                    :variant="mainTable === table ? 'default' : 'outline'"
-                    @click="setMainTable(table)"
-                    class="justify-start font-mono text-sm h-auto py-3"
-                  >
-                    <div class="flex flex-col items-start w-full">
-                      <span class="font-semibold">{{ table }}</span>
-                      <span
-                        v-if="mainTable === table"
-                        class="text-xs opacity-75"
-                        >✓ Table หลัก</span
-                      >
-                    </div>
-                  </Button>
-                </div>
-                <p
-                  v-if="availableTables.length === 0"
-                  class="text-sm text-muted-foreground text-center py-4 border rounded bg-muted/50"
-                >
-                  ไม่มี Table - กรุณาเพิ่ม Table ใน Step 2
-                </p>
-              </div>
-
-              <!-- เพิ่มการเชื่อม -->
-              <div v-if="mainTable" class="space-y-4 border-t pt-4">
-                <Label>2. เพิ่มการเชื่อม Table อื่นๆ (Manual)</Label>
-                <p class="text-xs text-muted-foreground mb-3">
-                  เพิ่มการเชื่อม Table เพิ่มเติมหากระบบไม่ได้ตรวจพบอัตโนมัติ
-                </p>
-
-                <div class="grid gap-4 p-4 border rounded-lg bg-muted/20">
-                  <!-- เลือก Table ที่จะเชื่อม -->
-                  <div class="space-y-2">
-                    <Label class="text-sm">Table ที่ต้องการเชื่อม</Label>
-                    <Select v-model="newJoin.table">
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือก Table" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="table in availableJoinTables"
-                          :key="table"
-                          :value="table"
-                        >
-                          {{ table }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p
-                      v-if="availableJoinTables.length === 0"
-                      class="text-xs text-muted-foreground"
-                    >
-                      ไม่มี Table ให้เชื่อมเพิ่ม (เชื่อมครบแล้วหรือมี Table
-                      เดียว)
-                    </p>
-                  </div>
-
-                  <!-- เลือก Columns ที่จะเชื่อมกัน -->
-                  <div v-if="newJoin.table" class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                      <Label class="text-sm">Column จาก {{ mainTable }}</Label>
-                      <Select v-model="newJoin.leftColumn">
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือก Column" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem
-                            v-for="col in getColumnsForTable(mainTable).value"
-                            :key="col"
-                            :value="col"
-                          >
-                            {{ col }}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div class="space-y-2">
-                      <Label class="text-sm"
-                        >Column จาก {{ newJoin.table }}</Label
-                      >
-                      <Select v-model="newJoin.rightColumn">
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือก Column" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem
-                            v-for="col in getColumnsForTable(newJoin.table)
-                              .value"
-                            :key="col"
-                            :value="col"
-                          >
-                            {{ col }}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <!-- เลือก Relation Type -->
-                  <div v-if="newJoin.table" class="space-y-2">
-                    <Label class="text-sm">Relation Type</Label>
-                    <Select v-model="newJoin.relation">
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือก Relation Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="one_to_many">One to Many</SelectItem>
-                        <SelectItem value="many_to_one">Many to One</SelectItem>
-                        <SelectItem value="one_to_one">One to One</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button
-                    @click="addJoin"
-                    :disabled="
-                      !newJoin.table ||
-                      !newJoin.leftColumn ||
-                      !newJoin.rightColumn
-                    "
-                    size="sm"
-                    class="w-full"
-                  >
-                    <Plus class="h-4 w-4 mr-1" />เพิ่มการเชื่อม
-                  </Button>
                 </div>
 
-                <!-- แสดงการเชื่อมที่สร้างแล้ว -->
-                <div
-                  v-if="
-                    (formData.policies?.runtime?.query?.joins || []).length > 0
-                  "
-                  class="space-y-2 mt-4"
-                >
-                  <Label class="text-sm font-medium"
-                    >การเชื่อมที่สร้างแล้ว:</Label
-                  >
+                <div class="space-y-3">
+                  <Label class="text-sm font-medium">สิทธิ์การใช้งาน</Label>
                   <div class="space-y-2">
                     <div
-                      v-for="(join, i) in formData.policies?.runtime?.query
-                        ?.joins || []"
-                      :key="i"
-                      class="flex items-center justify-between p-3 border rounded-lg bg-card hover:shadow-sm transition-shadow"
+                      class="flex items-center space-x-3 rounded-lg border p-4 transition-colors hover:bg-accent/50 cursor-pointer"
+                      :class="{
+                        'border-primary bg-primary/5': newPolicy.can_view,
+                      }"
+                      @click="newPolicy.can_view = !newPolicy.can_view"
                     >
-                      <div class="flex items-center gap-2 text-sm flex-1">
-                        <Badge variant="outline" class="font-mono">{{
-                          (join as any).table_from
-                        }}</Badge>
-                        <span class="text-muted-foreground">→</span>
-                        <Badge variant="outline" class="font-mono">{{
-                          (join as any).table_to
-                        }}</Badge>
-                        <span class="text-xs text-muted-foreground">
-                          ผ่าน
-                          <code class="bg-muted px-1 py-0.5 rounded">{{
-                            (join as any).condition.column_from
-                          }}</code>
-                          {{ (join as any).condition.operator }}
-                          <code class="bg-muted px-1 py-0.5 rounded">{{
-                            (join as any).condition.column_to
-                          }}</code>
-                        </span>
-                        <Badge variant="secondary" class="ml-2 text-xs">{{
-                          (join as any).relation
-                        }}</Badge>
+                      <Checkbox
+                        :model-value="newPolicy.can_view"
+                        @update:model-value="
+                          (val) => (newPolicy.can_view = !!val)
+                        "
+                        id="can_view"
+                      />
+                      <Label for="can_view" class="flex-1 cursor-pointer">
+                        <div>
+                          <span class="font-medium">ดู</span>
+                          <span class="text-muted-foreground ml-2">(View)</span>
+                        </div>
+                        <p class="text-sm text-muted-foreground mt-0.5">
+                          อนุญาตให้ดูข้อมูลได้
+                        </p>
+                      </Label>
+                    </div>
+                    <div
+                      class="flex items-center space-x-3 rounded-lg border p-4 transition-colors hover:bg-accent/50 cursor-pointer"
+                      :class="{
+                        'border-primary bg-primary/5': newPolicy.can_edit,
+                      }"
+                      @click="newPolicy.can_edit = !newPolicy.can_edit"
+                    >
+                      <Checkbox
+                        :model-value="newPolicy.can_edit"
+                        @update:model-value="
+                          (val) => (newPolicy.can_edit = !!val)
+                        "
+                        id="can_edit"
+                      />
+                      <Label for="can_edit" class="flex-1 cursor-pointer">
+                        <div>
+                          <span class="font-medium">แก้ไข</span>
+                          <span class="text-muted-foreground ml-2">(Edit)</span>
+                        </div>
+                        <p class="text-sm text-muted-foreground mt-0.5">
+                          อนุญาตให้แก้ไขข้อมูลได้
+                        </p>
+                      </Label>
+                    </div>
+                    <div
+                      class="flex items-center space-x-3 rounded-lg border p-4 transition-colors hover:bg-accent/50 cursor-pointer"
+                      :class="{
+                        'border-primary bg-primary/5': newPolicy.can_delete,
+                      }"
+                      @click="newPolicy.can_delete = !newPolicy.can_delete"
+                    >
+                      <Checkbox
+                        :model-value="newPolicy.can_delete"
+                        @update:model-value="
+                          (val) => (newPolicy.can_delete = !!val)
+                        "
+                        id="can_delete"
+                      />
+                      <Label for="can_delete" class="flex-1 cursor-pointer">
+                        <div>
+                          <span class="font-medium">ลบ</span>
+                          <span class="text-muted-foreground ml-2"
+                            >(Delete)</span
+                          >
+                        </div>
+                        <p class="text-sm text-muted-foreground mt-0.5">
+                          อนุญาตให้ลบข้อมูลได้
+                        </p>
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <Label class="text-sm font-medium"
+                    >อนุญาตให้ดู Views
+                    <span class="text-red-500">*</span></Label
+                  >
+                  <p class="text-xs text-muted-foreground">
+                    เลือก View ที่ Role นี้สามารถเข้าถึงได้
+                  </p>
+
+                  <div
+                    v-if="availableViews.length > 0"
+                    class="border rounded p-3 space-y-2 bg-background max-h-60 overflow-y-auto"
+                  >
+                    <div
+                      v-for="view in availableViews"
+                      :key="view"
+                      :class="[
+                        'flex items-center space-x-2 p-2 rounded',
+                        isViewAlreadyInPolicy(view)
+                          ? 'bg-destructive/10 opacity-60 cursor-not-allowed'
+                          : 'hover:bg-muted cursor-pointer',
+                      ]"
+                    >
+                      <Checkbox
+                        :id="`view-${view}`"
+                        :model-value="isViewSelected(view)"
+                        :disabled="isViewAlreadyInPolicy(view)"
+                        @update:model-value="() => toggleViewInPolicy(view)"
+                      />
+                      <Label
+                        :for="`view-${view}`"
+                        :class="[
+                          'flex-1 font-mono text-sm',
+                          isViewAlreadyInPolicy(view)
+                            ? 'cursor-not-allowed'
+                            : 'cursor-pointer',
+                        ]"
+                      >
+                        {{ view }}
+                        <Badge
+                          v-if="isViewAlreadyInPolicy(view)"
+                          variant="destructive"
+                          class="ml-2 text-xs"
+                        >
+                          มี Policy แล้ว
+                        </Badge>
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div
+                    v-else
+                    class="text-sm text-muted-foreground text-center py-4 border rounded bg-muted/50"
+                  >
+                    ไม่มี View ให้เลือก - กรุณาสร้าง View ใน Step 3 ก่อน
+                  </div>
+
+                  <div
+                    v-if="newPolicy.allow_view.length > 0"
+                    class="flex flex-wrap gap-2 p-2 border rounded bg-primary/5"
+                  >
+                    <span class="text-xs text-muted-foreground"
+                      >เลือกแล้ว:</span
+                    >
+                    <Badge
+                      v-for="view in newPolicy.allow_view"
+                      :key="view"
+                      variant="secondary"
+                    >
+                      {{ view }}
+                    </Badge>
+                  </div>
+                </div>
+
+                <Button
+                  @click="addPolicy"
+                  :disabled="
+                    !newPolicy.role || newPolicy.allow_view.length === 0
+                  "
+                  class="w-full"
+                >
+                  <Plus class="h-4 w-4 mr-1" />เพิ่ม Policy
+                </Button>
+              </div>
+
+              <!-- แสดง Policies ที่สร้างแล้ว -->
+              <div
+                v-if="(values.access_policies || []).length"
+                class="space-y-3"
+              >
+                <div class="flex items-center justify-between">
+                  <Label class="text-sm font-medium"
+                    >Policies ที่สร้างแล้ว</Label
+                  >
+                  <Badge variant="secondary"
+                    >{{ (values.access_policies || []).length }} policies</Badge
+                  >
+                </div>
+
+                <div class="space-y-2">
+                  <div
+                    v-for="(policy, i) in values.access_policies"
+                    :key="i"
+                    class="border rounded-lg p-4 space-y-2 bg-card hover:shadow-sm transition-shadow"
+                  >
+                    <div class="flex justify-between items-start">
+                      <div class="space-y-1 flex-1">
+                        <div class="flex items-center gap-2">
+                          <Badge variant="default">{{ policy.role }}</Badge>
+                        </div>
+
+                        <div class="flex gap-2 text-xs">
+                          <span
+                            v-if="policy.can_view"
+                            class="text-green-600 dark:text-green-400"
+                            >✓ View</span
+                          >
+                          <span
+                            v-if="policy.can_edit"
+                            class="text-blue-600 dark:text-blue-400"
+                            >✓ Edit</span
+                          >
+                          <span
+                            v-if="policy.can_delete"
+                            class="text-red-600 dark:text-red-400"
+                            >✓ Delete</span
+                          >
+                        </div>
+
+                        <div class="flex flex-wrap gap-1 mt-2">
+                          <span class="text-xs text-muted-foreground"
+                            >อนุญาต Views:</span
+                          >
+                          <Badge
+                            v-for="view in policy.allow_view"
+                            :key="view"
+                            variant="secondary"
+                            class="text-xs"
+                          >
+                            {{ view }}
+                          </Badge>
+                        </div>
                       </div>
+
                       <Button
-                        @click="removeJoin(i as number)"
+                        @click="removePolicy(i)"
                         variant="ghost"
                         size="sm"
-                        class="text-destructive"
+                        class="text-destructive hover:text-destructive"
                       >
                         <X class="h-4 w-4" />
                       </Button>
@@ -2596,81 +2595,513 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- สรุปการตั้งค่า -->
-            <div
-              v-if="mainTable"
-              class="rounded-lg border border-primary/50 bg-primary/5 p-4 space-y-2"
-            >
-              <Label class="text-sm font-semibold">📋 สรุปการตั้งค่า</Label>
-              <div class="text-sm space-y-1">
-                <div class="flex items-center gap-2">
-                  <span class="text-muted-foreground">Table หลัก:</span>
-                  <Badge variant="default" class="font-mono">{{
-                    mainTable
-                  }}</Badge>
-                </div>
-                <div
-                  v-if="
-                    (formData.policies?.runtime?.query?.joins || []).length > 0
-                  "
-                  class="flex items-center gap-2"
+            <!-- Step 5: Runtime Policies -->
+            <div v-show="currentStep === 5" class="space-y-6">
+              <div class="rounded-lg border border-muted bg-muted/50 p-4">
+                <p class="text-sm text-muted-foreground">
+                  <strong>คำแนะนำ:</strong> กำหนด Table หลัก และเชื่อม Tables
+                  อื่นๆ เข้าด้วยกัน
+                </p>
+              </div>
+
+              <!-- Default View & Key Field -->
+              <div class="grid grid-cols-2 gap-4">
+                <FormField
+                  v-slot="{ componentField }"
+                  name="policies.runtime.default_view"
                 >
-                  <span class="text-muted-foreground">เชื่อมกับ:</span>
-                  <Badge
-                    v-for="(join, i) in formData.policies?.runtime?.query
-                      ?.joins || []"
-                    :key="i"
-                    variant="secondary"
-                    class="font-mono"
-                  >
-                    {{ (join as any).table_to }}
-                  </Badge>
+                  <FormItem>
+                    <FormLabel
+                      >Default View
+                      <span class="text-red-500">*</span></FormLabel
+                    >
+                    <Select v-bind="componentField">
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือก View" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="view in availableViews"
+                          :key="view"
+                          :value="view"
+                        >
+                          {{ view }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription class="text-xs">
+                      View ที่จะใช้เป็นค่าเริ่มต้น
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                </FormField>
+
+                <FormField
+                  v-slot="{ componentField }"
+                  name="policies.runtime.key_field"
+                >
+                  <FormItem>
+                    <FormLabel
+                      >Index <span class="text-red-500">*</span></FormLabel
+                    >
+                    <Select v-bind="componentField">
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือก Column" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="col in values.schema?.columns || []"
+                          :key="`${col.table_name}.${col.name}`"
+                          :value="`${col.table_name}.${col.name}`"
+                          class="cursor-pointer"
+                        >
+                          <span class="font-mono">{{ col.name }}</span>
+                          <span class="text-xs text-muted-foreground ml-2"
+                            >({{ col.table_name }})</span
+                          >
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription class="text-xs">
+                      Column ที่ใช้ในการค้นหาข้อมูล (เช่น id, email, username)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                </FormField>
+              </div>
+
+              <!-- Owner Column & Token Claim -->
+              <div class="space-y-4">
+                <div
+                  class="flex flex-row items-center justify-between rounded-lg border p-4 transition-colors"
+                  :class="{ 'border-primary bg-primary/5': enableOwnerColumn }"
+                >
+                  <div class="space-y-0.5">
+                    <Label class="text-base font-medium"
+                      >Owner Column & Token Claim</Label
+                    >
+                    <p class="text-sm text-muted-foreground">
+                      จำกัดการเข้าถึงข้อมูลตาม Token Claim (ไม่บังคับ
+                      แต่ถ้าเปิดต้องกรอกทั้งคู่)
+                    </p>
+                  </div>
+                  <Switch
+                    :model-value="enableOwnerColumn"
+                    @update:model-value="
+                      (val: boolean) => (enableOwnerColumn = val)
+                    "
+                  />
                 </div>
-                <div v-else class="text-xs text-muted-foreground">
-                  ยังไม่มีการเชื่อม Table (ไม่จำเป็นถ้าใช้ Table เดียว)
+
+                <div v-if="enableOwnerColumn" class="space-y-4 pl-1">
+                  <div
+                    v-if="!mainTable"
+                    class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
+                  >
+                    <p
+                      class="text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2"
+                    >
+                      <AlertTriangle class="h-4 w-4 shrink-0" /> กรุณาเลือก
+                      Table หลักก่อนจึงจะเลือก Owner Column ได้
+                    </p>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                      <Label
+                        >Owner Column <span class="text-red-500">*</span></Label
+                      >
+                      <Select v-model="ownerColumnValue" :disabled="!mainTable">
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder="เลือก Column จาก Table หลัก"
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="col in mainTableColumnNames"
+                            :key="col"
+                            :value="col"
+                            class="cursor-pointer"
+                          >
+                            <span class="font-mono">{{ col }}</span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p class="text-xs text-muted-foreground">
+                        Column ใน Table หลักที่ใช้ระบุความเป็นเจ้าของข้อมูล
+                      </p>
+                    </div>
+
+                    <div class="space-y-2">
+                      <Label
+                        >Token Claim <span class="text-red-500">*</span></Label
+                      >
+                      <Input
+                        v-model="tokenClaimValue"
+                        placeholder="เช่น sub, user_id, email"
+                        :maxlength="30"
+                        class="font-mono"
+                      />
+                      <p class="text-xs text-muted-foreground">
+                        ชื่อ Claim ใน Token ที่จะนำมาเปรียบเทียบกับ Owner Column
+                        (ไม่เกิน 30 ตัวอักษร)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="
+                      (!ownerColumnValue && tokenClaimValue) ||
+                      (ownerColumnValue && !tokenClaimValue)
+                    "
+                    class="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-500/30 p-3"
+                  >
+                    <p
+                      class="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2"
+                    >
+                      <AlertTriangle class="h-4 w-4 shrink-0" /> ต้องกรอกทั้ง
+                      Owner Column และ Token Claim หรือไม่กรอกทั้งคู่
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Validation Warning -->
-            <div
-              v-if="
-                currentStep === 5 &&
-                mainTable &&
-                ((formData.policies?.write?.allow_edit || []).length === 0 ||
-                  (formData.policies?.runtime?.query?.where_allow || [])
-                    .length === 0)
-              "
-              class="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 mt-4"
-            >
-              <div class="flex items-start gap-3">
-                <span class="text-xl">⚠️</span>
-                <div class="flex-1">
-                  <div class="font-semibold text-sm text-amber-800">
-                    จำเป็นต้องแก้ไขก่อน Submit
+              <div
+                v-if="availableViews.length === 0"
+                class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
+              >
+                <p
+                  class="text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2"
+                >
+                  <AlertTriangle class="h-4 w-4 shrink-0" />
+                  <strong>ยังไม่มี View:</strong> กรุณาสร้าง View ใน Step 3 ก่อน
+                </p>
+              </div>
+
+              <div
+                v-if="(values.schema?.columns || []).length === 0"
+                class="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4"
+              >
+                <p
+                  class="text-sm text-yellow-700 dark:text-yellow-400 flex items-center gap-2"
+                >
+                  <AlertTriangle class="h-4 w-4 shrink-0" />
+                  <strong>ยังไม่มี Columns:</strong> กรุณาเลือก Columns ใน Step
+                  2 ก่อน
+                </p>
+              </div>
+
+              <!-- เชื่อม Tables -->
+              <div class="space-y-4 border rounded-lg p-4 bg-background">
+                <h3 class="font-semibold">เชื่อม Tables เข้าด้วยกัน</h3>
+
+                <!-- เลือก Table หลัก -->
+                <div class="space-y-2">
+                  <Label
+                    >1. เลือก Table หลัก
+                    <span class="text-red-500">*</span></Label
+                  >
+                  <p class="text-xs text-muted-foreground">
+                    Table ที่จะดึงข้อมูลหลัก
+                  </p>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <Button
+                      v-for="table in availableTables"
+                      :key="table"
+                      :variant="mainTable === table ? 'default' : 'outline'"
+                      @click="setMainTable(table)"
+                      class="justify-start font-mono text-sm h-auto py-3"
+                    >
+                      <div class="flex flex-col items-start w-full">
+                        <span class="font-semibold">{{ table }}</span>
+                        <span
+                          v-if="mainTable === table"
+                          class="text-xs opacity-75"
+                          >✓ Table หลัก</span
+                        >
+                      </div>
+                    </Button>
                   </div>
-                  <div class="text-xs text-amber-700 mt-1 space-y-1">
-                    <div
-                      v-if="
-                        (formData.policies?.write?.allow_edit || []).length ===
-                        0
-                      "
-                    >
-                      • <strong>allow_edit</strong> ว่างเปล่า - จำเป็นสำหรับ
-                      Write Policy
+                  <p
+                    v-if="availableTables.length === 0"
+                    class="text-sm text-muted-foreground text-center py-4 border rounded bg-muted/50"
+                  >
+                    ไม่มี Table - กรุณาเพิ่ม Table ใน Step 2
+                  </p>
+                </div>
+
+                <!-- เพิ่มการเชื่อม -->
+                <div v-if="mainTable" class="space-y-4 border-t pt-4">
+                  <Label>2. เพิ่มการเชื่อม Table อื่นๆ (Manual)</Label>
+                  <p class="text-xs text-muted-foreground mb-3">
+                    เพิ่มการเชื่อม Table เพิ่มเติมหากระบบไม่ได้ตรวจพบอัตโนมัติ
+                  </p>
+
+                  <div class="grid gap-4 p-4 border rounded-lg bg-muted/20">
+                    <!-- เลือก Table ที่จะเชื่อม -->
+                    <div class="space-y-2">
+                      <Label class="text-sm">Table ที่ต้องการเชื่อม</Label>
+                      <Select v-model="newJoin.table">
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือก Table" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="table in availableJoinTables"
+                            :key="table"
+                            :value="table"
+                          >
+                            {{ table }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p
+                        v-if="availableJoinTables.length === 0"
+                        class="text-xs text-muted-foreground"
+                      >
+                        ไม่มี Table ให้เชื่อมเพิ่ม (เชื่อมครบแล้วหรือมี Table
+                        เดียว)
+                      </p>
                     </div>
-                    <div
-                      v-if="
-                        (formData.policies?.runtime?.query?.where_allow || [])
-                          .length === 0
-                      "
-                    >
-                      • <strong>where_allow</strong> ว่างเปล่า - จำเป็นสำหรับ
-                      Runtime Policy
+
+                    <!-- เลือก Columns ที่จะเชื่อมกัน -->
+                    <div v-if="newJoin.table" class="grid grid-cols-2 gap-4">
+                      <div class="space-y-2">
+                        <Label class="text-sm"
+                          >Column จาก {{ mainTable }}</Label
+                        >
+                        <Select v-model="newJoin.leftColumn">
+                          <SelectTrigger>
+                            <SelectValue placeholder="เลือก Column" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem
+                              v-for="col in getColumnsForTable(mainTable).value"
+                              :key="col"
+                              :value="col"
+                            >
+                              {{ col }}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div class="space-y-2">
+                        <Label class="text-sm"
+                          >Column จาก {{ newJoin.table }}</Label
+                        >
+                        <Select v-model="newJoin.rightColumn">
+                          <SelectTrigger>
+                            <SelectValue placeholder="เลือก Column" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem
+                              v-for="col in getColumnsForTable(newJoin.table)
+                                .value"
+                              :key="col"
+                              :value="col"
+                            >
+                              {{ col }}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div class="mt-2 text-amber-600">
-                      💡 <strong>วิธีแก้:</strong> กด "🔄 Refresh" ใน Query
-                      Summary หรือตรวจสอบว่าได้เลือก columns ใน Step 2 แล้ว
+
+                    <!-- เลือก Relation Type -->
+                    <div v-if="newJoin.table" class="space-y-2">
+                      <Label class="text-sm">Relation Type</Label>
+                      <Select v-model="newJoin.relation">
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือก Relation Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one_to_many"
+                            >One to Many</SelectItem
+                          >
+                          <SelectItem value="many_to_one"
+                            >Many to One</SelectItem
+                          >
+                          <SelectItem value="one_to_one">One to One</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button
+                      @click="addJoin"
+                      :disabled="
+                        !newJoin.table ||
+                        !newJoin.leftColumn ||
+                        !newJoin.rightColumn
+                      "
+                      size="sm"
+                      class="w-full"
+                    >
+                      <Plus class="h-4 w-4 mr-1" />เพิ่มการเชื่อม
+                    </Button>
+                  </div>
+
+                  <!-- แสดงการเชื่อมที่สร้างแล้ว -->
+                  <div
+                    v-if="
+                      (formData.policies?.runtime?.query?.joins || []).length >
+                      0
+                    "
+                    class="space-y-2 mt-4"
+                  >
+                    <Label class="text-sm font-medium"
+                      >การเชื่อมที่สร้างแล้ว:</Label
+                    >
+                    <div class="space-y-2">
+                      <div
+                        v-for="(join, i) in formData.policies?.runtime?.query
+                          ?.joins || []"
+                        :key="i"
+                        class="flex items-center justify-between p-3 border rounded-lg bg-card hover:shadow-sm transition-shadow"
+                      >
+                        <div class="flex items-center gap-2 text-sm flex-1">
+                          <Badge variant="outline" class="font-mono">{{
+                            (join as any).table_from
+                          }}</Badge>
+                          <span class="text-muted-foreground">→</span>
+                          <Badge variant="outline" class="font-mono">{{
+                            (join as any).table_to
+                          }}</Badge>
+                          <span class="text-xs text-muted-foreground">
+                            ผ่าน
+                            <code class="bg-muted px-1 py-0.5 rounded">{{
+                              (join as any).condition.column_from
+                            }}</code>
+                            {{ (join as any).condition.operator }}
+                            <code class="bg-muted px-1 py-0.5 rounded">{{
+                              (join as any).condition.column_to
+                            }}</code>
+                          </span>
+                          <Badge variant="secondary" class="ml-2 text-xs">{{
+                            (join as any).relation
+                          }}</Badge>
+                        </div>
+                        <Button
+                          @click="removeJoin(i as number)"
+                          variant="ghost"
+                          size="sm"
+                          class="text-destructive"
+                        >
+                          <X class="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- สรุปการตั้งค่า -->
+              <div
+                v-if="mainTable"
+                class="rounded-lg border border-primary/50 bg-primary/5 p-4 space-y-2"
+              >
+                <Label class="text-sm font-semibold flex items-center gap-2"
+                  ><ClipboardList class="h-4 w-4" /> สรุปการตั้งค่า</Label
+                >
+                <div class="text-sm space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-muted-foreground">Table หลัก:</span>
+                    <Badge variant="default" class="font-mono">{{
+                      mainTable
+                    }}</Badge>
+                  </div>
+                  <div
+                    v-if="
+                      (formData.policies?.runtime?.query?.joins || []).length >
+                      0
+                    "
+                    class="flex items-center gap-2"
+                  >
+                    <span class="text-muted-foreground">เชื่อมกับ:</span>
+                    <Badge
+                      v-for="(join, i) in formData.policies?.runtime?.query
+                        ?.joins || []"
+                      :key="i"
+                      variant="secondary"
+                      class="font-mono"
+                    >
+                      {{ (join as any).table_to }}
+                    </Badge>
+                  </div>
+                  <div v-else class="text-xs text-muted-foreground">
+                    ยังไม่มีการเชื่อม Table (ไม่จำเป็นถ้าใช้ Table เดียว)
+                  </div>
+                  <div
+                    v-if="
+                      enableOwnerColumn && ownerColumnValue && tokenClaimValue
+                    "
+                    class="flex items-center gap-2"
+                  >
+                    <span class="text-muted-foreground">Owner Column:</span>
+                    <Badge variant="outline" class="font-mono">{{
+                      ownerColumnValue
+                    }}</Badge>
+                    <span class="text-muted-foreground ml-2">Token Claim:</span>
+                    <Badge variant="outline" class="font-mono">{{
+                      tokenClaimValue
+                    }}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Validation Warning -->
+              <div
+                v-if="
+                  currentStep === 5 &&
+                  mainTable &&
+                  ((formData.policies?.write?.allow_edit || []).length === 0 ||
+                    (formData.policies?.runtime?.query?.where_allow || [])
+                      .length === 0)
+                "
+                class="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 mt-4"
+              >
+                <div class="flex items-start gap-3">
+                  <AlertTriangle
+                    class="h-5 w-5 text-amber-600 shrink-0 mt-0.5"
+                  />
+                  <div class="flex-1">
+                    <div class="font-semibold text-sm text-amber-800">
+                      จำเป็นต้องแก้ไขก่อน Submit
+                    </div>
+                    <div class="text-xs text-amber-700 mt-1 space-y-1">
+                      <div
+                        v-if="
+                          (formData.policies?.write?.allow_edit || [])
+                            .length === 0
+                        "
+                      >
+                        • <strong>allow_edit</strong> ว่างเปล่า - จำเป็นสำหรับ
+                        Write Policy
+                      </div>
+                      <div
+                        v-if="
+                          (formData.policies?.runtime?.query?.where_allow || [])
+                            .length === 0
+                        "
+                      >
+                        • <strong>where_allow</strong> ว่างเปล่า - จำเป็นสำหรับ
+                        Runtime Policy
+                      </div>
+                      <div class="mt-2 text-amber-600 flex items-start gap-1">
+                        <Lightbulb class="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span
+                          ><strong>วิธีแก้:</strong> กด "<RefreshCw
+                            class="inline h-3 w-3"
+                          />
+                          Refresh" ใน Query Summary หรือตรวจสอบว่าได้เลือก
+                          columns ใน Step 2 แล้ว</span
+                        >
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2678,44 +3109,46 @@ onMounted(() => {
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Navigation -->
-        <div class="flex justify-between pt-6 border-t">
+      <!-- Navigation -->
+      <Separator />
+      <div class="flex justify-between px-6 py-4 bg-muted/30">
+        <Button
+          @click="prevStep"
+          variant="outline"
+          :disabled="currentStep === 1"
+          :class="currentStep === 1 ? '' : 'cursor-pointer'"
+        >
+          <ChevronLeft class="h-4 w-4 mr-1" />ย้อนกลับ
+        </Button>
+
+        <div class="flex gap-2">
           <Button
-            @click="prevStep"
+            @click="closeSheet"
             variant="outline"
-            :disabled="currentStep === 1"
-            :class="currentStep === 1 ? '' : 'cursor-pointer'"
+            :disabled="isSubmitting"
+            :class="isSubmitting ? '' : 'cursor-pointer'"
+            >ยกเลิก</Button
           >
-            <ChevronLeft class="h-4 w-4 mr-1" />ย้อนกลับ
+          <Button
+            v-if="currentStep < 5"
+            @click="nextStep"
+            :disabled="!canGoNext"
+            :class="!canGoNext ? '' : 'cursor-pointer'"
+          >
+            ถัดไป<ChevronRight class="h-4 w-4 ml-1" />
           </Button>
-
-          <div class="flex gap-2">
-            <Button
-              @click="closeSheet"
-              variant="outline"
-              :disabled="isSubmitting"
-              :class="isSubmitting ? '' : 'cursor-pointer'"
-              >ยกเลิก</Button
-            >
-            <Button
-              v-if="currentStep < 5"
-              @click="nextStep"
-              :disabled="!canGoNext"
-              :class="!canGoNext ? '' : 'cursor-pointer'"
-            >
-              ถัดไป<ChevronRight class="h-4 w-4 ml-1" />
-            </Button>
-            <Button
-              v-else
-              @click="onSubmit"
-              :disabled="isSubmitting || !canGoNext"
-              :class="isSubmitting || !canGoNext ? '' : 'cursor-pointer'"
-            >
-              <Loader2 v-if="isSubmitting" class="h-4 w-4 animate-spin mr-2" />
-              สร้าง Version
-            </Button>
-          </div>
+          <Button
+            v-else
+            @click="onSubmit"
+            :disabled="isSubmitting || !canGoNext"
+            :class="isSubmitting || !canGoNext ? '' : 'cursor-pointer'"
+          >
+            <Loader2 v-if="isSubmitting" class="h-4 w-4 animate-spin mr-2" />
+            <Notebook v-else class="h-4 w-4 mr-2" />
+            สร้าง Version
+          </Button>
         </div>
       </div>
     </SheetContent>

@@ -36,11 +36,19 @@ const handleCallback = async () => {
 
       await authStore.handleCallback(String(code), String(state));
 
+      if (!authStore.isAdmin) {
+        showError("ไม่มีสิทธิ์เข้าใช้งาน", {
+          description: "ระบบนี้รองรับเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น",
+        });
+        router.replace({ name: ROUTE_NAMES.UNAUTHORIZED });
+        return;
+      }
+
       showSuccess("เข้าสู่ระบบสำเร็จ", {
         description: "ยินดีต้อนรับเข้าสู่ระบบ SMs Data Management",
       });
 
-      router.push({ name: ROUTE_NAMES.HOME });
+      router.push({ name: ROUTE_NAMES.MANAGE_DATABASE });
     } catch (error: any) {
       showError("เข้าสู่ระบบไม่สำเร็จ", {
         description: "เกิดข้อผิดพลาดในการเข้าสู่ระบบ",
@@ -92,11 +100,6 @@ onMounted(() => {
         >
           {{ env.APP_NAME }}
         </h1>
-        <p
-          class="mt-2 text-sm text-muted-foreground transition-colors duration-200"
-        >
-          เข้าสู่ระบบเพื่อจัดการข้อมูล
-        </p>
 
         <Badge variant="outline" class="mt-4 transition-colors duration-200">
           v{{ env.APP_VERSION }}
@@ -126,7 +129,7 @@ onMounted(() => {
 
               <Key v-else class="mr-2 h-5 w-5" />
 
-              {{ isLoading ? "กำลังเชื่อมต่อ..." : "เข้าสู่ระบบด้วย Keycloak" }}
+              {{ isLoading ? "กำลังเชื่อมต่อ..." : "เข้าสู่ระบบ" }}
             </Button>
           </div>
 

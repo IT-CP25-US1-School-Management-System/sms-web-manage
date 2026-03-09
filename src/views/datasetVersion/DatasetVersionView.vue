@@ -157,21 +157,6 @@ const getStatusColor = (status: string) => {
   return colors[status as keyof typeof colors] || "";
 };
 
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "-";
-  try {
-    return new Date(dateString).toLocaleDateString("th-TH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "-";
-  }
-};
-
 const openDetail = (version: DatasetVersion) => {
   selectedVersion.value = version;
   isDetailOpen.value = true;

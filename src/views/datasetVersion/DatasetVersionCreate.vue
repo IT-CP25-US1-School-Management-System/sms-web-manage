@@ -2149,8 +2149,18 @@ watch(
                         >เลือก Table <span class="text-red-500">*</span></Label
                       >
                       <Select
-                        v-model="
+                        :model-value="
                           viewTableSelections[String(viewName)]!.table_name
+                        "
+                        @update:model-value="
+                          (val) => {
+                            const vn = String(viewName);
+                            if (!viewTableSelections[vn]) {
+                              viewTableSelections[vn] = { table_name: '', columns: [] };
+                            }
+                            viewTableSelections[vn]!.table_name = String(val);
+                            viewTableSelections[vn]!.columns = [];
+                          }
                         "
                       >
                         <SelectTrigger>

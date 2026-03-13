@@ -1161,7 +1161,8 @@ const setMainTable = (tableName: string) => {
   // Get columns from main table and joined tables for allow_edit
   const updatePoliciesWithAllColumns = () => {
     const mainTableColumns = groupedColumns.value[tableName] || [];
-    let allEditableColumns = mainTableColumns.map((col: any) => col.name);
+    // allow_edit contains only columns from the main table that the user selected
+    const allEditableColumns = mainTableColumns.map((col: any) => col.name);
     let whereAllowRules: Array<{
       table_name: string;
       field: string;
@@ -1177,23 +1178,10 @@ const setMainTable = (tableName: string) => {
       });
     });
 
-    // Add columns from joined tables
+    // Add where_allow rules for joined tables (but NOT to allow_edit)
     const currentJoins = autoJoins || [];
     currentJoins.forEach((join: any) => {
       const joinedTableColumns = groupedColumns.value[join.table_to] || [];
-
-      // Add editable columns from joined tables (prefixed to avoid conflicts)
-      joinedTableColumns
-        .filter((col: any) => col.name.toLowerCase() !== "id") // Skip id columns from joined tables
-        .forEach((col: any) => {
-          // Use alias from projections if available, otherwise prefix with table name
-          const joinProjection = join.projections?.find(
-            (p: any) => p.column === col.name,
-          );
-          const columnAlias =
-            joinProjection?.alias || `${join.table_to}_${col.name}`;
-          allEditableColumns.push(columnAlias);
-        });
 
       // Add where_allow rules for joined tables
       joinedTableColumns.forEach((col: any) => {
@@ -1281,7 +1269,8 @@ const refreshMainTableColumns = () => {
 
   const tableName = mainTable.value;
   const mainTableColumns = groupedColumns.value[tableName] || [];
-  let allEditableColumns = mainTableColumns.map((col: any) => col.name);
+  // allow_edit contains only columns from the main table that the user selected
+  const allEditableColumns = mainTableColumns.map((col: any) => col.name);
   let whereAllowRules: Array<{
     table_name: string;
     field: string;
@@ -1297,22 +1286,10 @@ const refreshMainTableColumns = () => {
     });
   });
 
-  // Add columns from joined tables
+  // Add where_allow rules for joined tables (but NOT to allow_edit)
   const currentJoins = formData.value.policies?.runtime?.query?.joins || [];
   currentJoins.forEach((join: any) => {
     const joinedTableColumns = groupedColumns.value[join.table_to] || [];
-
-    // Add editable columns from joined tables
-    joinedTableColumns
-      .filter((col: any) => col.name.toLowerCase() !== "id")
-      .forEach((col: any) => {
-        const joinProjection = join.projections?.find(
-          (p: any) => p.column === col.name,
-        );
-        const columnAlias =
-          joinProjection?.alias || `${join.table_to}_${col.name}`;
-        allEditableColumns.push(columnAlias);
-      });
 
     // Add where_allow rules for joined tables
     joinedTableColumns.forEach((col: any) => {

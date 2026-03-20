@@ -101,6 +101,11 @@ const enableOwnerColumn = ref(false);
 const ownerColumnValue = ref("");
 const tokenClaimValue = ref("");
 
+// Reference DatasetVersion states
+const referenceVersions = ref<Array<{ version: string; created_at: string }>>([]);
+const isLoadingReferenceVersions = ref(false);
+const selectedReferenceVersion = ref<string | null>(null);
+
 // Zod schemas for each step
 const step1Schema = z.object({
   version: z
@@ -472,6 +477,81 @@ const loadRoles = async () => {
     });
   } finally {
     isLoadingRoles.value = false;
+  }
+};
+
+const loadReferenceVersions = async () => {
+  try {
+    isLoadingReferenceVersions.value = true;
+    const response = await dataApiInstance.get(
+      `/v1/datasets/${datasetId.value}/versions`,
+      {
+        params: { per_page: 100, page: 1 },
+      },
+    );
+    // Sort by created_at descending (newest first) and map to display format
+    referenceVersions.value = response.data.data
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA; // Newest first
+      })
+      .map((v: any) => ({
+        version: v.version,
+        created_at: v.created_at,
+      }));
+  } catch (error) {
+    showError("ไม่สามารถโหลดข้อมูล Version เก่าได้", {
+      description: "กรุณาลองใหม่อีกครั้ง",
+    });
+  } finally {
+    isLoadingReferenceVersions.value = false;
+  }
+};
+
+const loadReferenceVersionData = async () => {
+  if (!selectedReferenceVersion.value) return;
+
+  try {
+    isSubmitting.value = true;
+    const response = await dataApiInstance.get(
+      `/v1/datasets/${datasetId.value}/versions/${selectedReferenceVersion.value}`,
+    );
+    const refVersion = response.data.data;
+
+    // Copy schema columns
+    if (refVersion.schema?.columns) {
+      setFieldValue("schema.columns", refVersion.schema.columns);
+    }
+
+    // Copy access policies
+    if (refVersion.access_policies) {
+      setFieldValue("access_policies", refVersion.access_policies);
+    }
+
+    // Copy policies
+    if (refVersion.policies) {
+      setFieldValue("policies", refVersion.policies);
+    }
+
+    // Copy source_id if available
+    if (refVersion.source_id) {
+      setFieldValue("source_id", refVersion.source_id);
+      // Load schemas for the selected source
+      await nextTick();
+      loadSchemas();
+    }
+
+    showSuccess("โหลดข้อมูล Version เก่าสำเร็จ", {
+      description: `โหลดข้อมูลจาก ${selectedReferenceVersion.value} เรียบร้อย`,
+    });
+  } catch (error) {
+    console.error("Failed to load reference version data:", error);
+    showError("ไม่สามารถโหลดข้อมูล Version ได้", {
+      description: "กรุณาลองใหม่อีกครั้ง",
+    });
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
@@ -1689,6 +1769,7 @@ let resizeObserver: ResizeObserver | null = null;
 onMounted(() => {
   loadSources();
   loadRoles();
+  loadReferenceVersions();
 });
 
 onBeforeUnmount(() => {
@@ -1848,26 +1929,70 @@ watch(
                 </FormItem>
               </FormField>
 
-              <!-- Status -->
-              <FormField v-slot="{ componentField }" name="status">
-                <FormItem>
-                  <FormLabel>สถานะ</FormLabel>
-                  <Select v-bind="componentField">
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="active">เปิดใช้งาน</SelectItem>
-                      <SelectItem value="preview">แบบร่าง</SelectItem>
-                      <SelectItem value="deprecated">ปิดใช้งาน</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-            </div>
+               <!-- Status -->
+               <FormField v-slot="{ componentField }" name="status">
+                 <FormItem>
+                   <FormLabel>สถานะ</FormLabel>
+                   <Select v-bind="componentField">
+                     <FormControl>
+                       <SelectTrigger>
+                         <SelectValue />
+                       </SelectTrigger>
+                     </FormControl>
+                     <SelectContent>
+                       <SelectItem value="active">เปิดใช้งาน</SelectItem>
+                       <SelectItem value="preview">แบบร่าง</SelectItem>
+                       <SelectItem value="deprecated">ปิดใช้งาน</SelectItem>
+                     </SelectContent>
+                   </Select>
+                   <FormMessage />
+                 </FormItem>
+               </FormField>
+
+               <!-- Load from Previous Version -->
+               <div class="space-y-2">
+                 <Label>โหลดจาก Version เก่า (ไม่บังคับ)</Label>
+                 <div class="flex gap-2">
+                   <Select
+                     v-model="selectedReferenceVersion"
+                     :disabled="isLoadingReferenceVersions || referenceVersions.length === 0"
+                   >
+                     <SelectTrigger class="flex-1">
+                       <SelectValue placeholder="เลือก Version เก่า..." />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem
+                         v-for="version in referenceVersions"
+                         :key="version.version"
+                         :value="version.version"
+                       >
+                         <div class="flex items-center gap-2">
+                           <span>{{ version.version }}</span>
+                           <span class="text-xs text-muted-foreground">
+                             ({{ new Date(version.created_at).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" }) }})
+                           </span>
+                         </div>
+                       </SelectItem>
+                     </SelectContent>
+                   </Select>
+                   <Button
+                     v-if="selectedReferenceVersion"
+                     @click="loadReferenceVersionData"
+                     size="sm"
+                     variant="secondary"
+                     :disabled="isSubmitting"
+                   >
+                     <RefreshCw class="h-4 w-4" />
+                   </Button>
+                 </div>
+                 <p v-if="isLoadingReferenceVersions" class="text-xs text-muted-foreground">
+                   กำลังโหลด Version เก่า...
+                 </p>
+                 <p v-else-if="referenceVersions.length === 0" class="text-xs text-muted-foreground">
+                   ไม่มี Version เก่า สามารถสร้างใหม่จากศูนย์ได้
+                 </p>
+               </div>
+             </div>
 
             <!-- Step 2: Schema -->
             <div v-show="currentStep === 2" class="space-y-4">

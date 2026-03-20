@@ -509,52 +509,6 @@ const loadReferenceVersions = async () => {
   }
 };
 
-const loadReferenceVersionData = async () => {
-  if (!selectedReferenceVersion.value) return;
-
-  try {
-    isSubmitting.value = true;
-    const response = await dataApiInstance.get(
-      `/v1/datasets/${datasetId.value}/versions/${selectedReferenceVersion.value}`,
-    );
-    const refVersion = response.data.data;
-
-    // Copy schema columns
-    if (refVersion.schema?.columns) {
-      setFieldValue("schema.columns", refVersion.schema.columns);
-    }
-
-    // Copy access policies
-    if (refVersion.access_policies) {
-      setFieldValue("access_policies", refVersion.access_policies);
-    }
-
-    // Copy policies
-    if (refVersion.policies) {
-      setFieldValue("policies", refVersion.policies);
-    }
-
-    // Copy source_id if available
-    if (refVersion.source_id) {
-      setFieldValue("source_id", refVersion.source_id);
-      // Load schemas for the selected source
-      await nextTick();
-      loadSchemas();
-    }
-
-    showSuccess("โหลดข้อมูล Version เก่าสำเร็จ", {
-      description: `โหลดข้อมูลจาก ${selectedReferenceVersion.value} เรียบร้อย`,
-    });
-  } catch (error) {
-    console.error("Failed to load reference version data:", error);
-    showError("ไม่สามารถโหลดข้อมูล Version ได้", {
-      description: "กรุณาลองใหม่อีกครั้ง",
-    });
-  } finally {
-    isSubmitting.value = false;
-  }
-};
-
 // Step 2: Schema functions
 const addColumnFromList = (column: any) => {
   const currentColumns = formData.value.schema?.columns || [];
@@ -1764,6 +1718,53 @@ watch(
   { deep: true },
 );
 
+// Watch selectedReferenceVersion and auto-load data
+watch(selectedReferenceVersion, async (newValue) => {
+  if (!newValue) return;
+  
+  try {
+    isSubmitting.value = true;
+    const response = await dataApiInstance.get(
+      `/v1/datasets/${datasetId.value}/versions/${newValue}`,
+    );
+    const refVersion = response.data.data;
+
+    // Copy schema columns
+    if (refVersion.schema?.columns) {
+      setFieldValue("schema.columns", refVersion.schema.columns);
+    }
+
+    // Copy access policies
+    if (refVersion.access_policies) {
+      setFieldValue("access_policies", refVersion.access_policies);
+    }
+
+    // Copy policies
+    if (refVersion.policies) {
+      setFieldValue("policies", refVersion.policies);
+    }
+
+    // Copy source_id if available
+    if (refVersion.source_id) {
+      setFieldValue("source_id", refVersion.source_id);
+      // Load schemas for the selected source
+      await nextTick();
+      loadSchemas();
+    }
+
+    showSuccess("โหลดข้อมูล Version เก่าสำเร็จ", {
+      description: `โหลดข้อมูลจาก ${newValue} เรียบร้อย`,
+    });
+  } catch (error) {
+    console.error("Failed to load reference version data:", error);
+    showError("ไม่สามารถโหลดข้อมูล Version ได้", {
+      description: "กรุณาลองใหม่อีกครั้ง",
+    });
+  } finally {
+    isSubmitting.value = false;
+  }
+});
+
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
@@ -1952,41 +1953,34 @@ watch(
                <!-- Load from Previous Version -->
                <div class="space-y-2">
                  <Label>โหลดจาก Version เก่า (ไม่บังคับ)</Label>
-                 <div class="flex gap-2">
-                   <Select
-                     v-model="selectedReferenceVersion"
-                     :disabled="isLoadingReferenceVersions || referenceVersions.length === 0"
-                   >
-                     <SelectTrigger class="flex-1">
-                       <SelectValue placeholder="เลือก Version เก่า..." />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem
-                         v-for="version in referenceVersions"
-                         :key="version.version"
-                         :value="version.version"
-                       >
-                         <div class="flex items-center gap-2">
-                           <span>{{ version.version }}</span>
-                           <span class="text-xs text-muted-foreground">
-                             ({{ new Date(version.created_at).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" }) }})
-                           </span>
-                         </div>
-                       </SelectItem>
-                     </SelectContent>
-                   </Select>
-                   <Button
-                     v-if="selectedReferenceVersion"
-                     @click="loadReferenceVersionData"
-                     size="sm"
-                     variant="secondary"
-                     :disabled="isSubmitting"
-                   >
-                     <RefreshCw class="h-4 w-4" />
-                   </Button>
-                 </div>
+                 <Select
+                   v-model="selectedReferenceVersion"
+                   :disabled="isLoadingReferenceVersions || referenceVersions.length === 0 || isSubmitting"
+                 >
+                   <SelectTrigger>
+                     <SelectValue placeholder="เลือก Version เก่า..." />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem
+                       v-for="version in referenceVersions"
+                       :key="version.version"
+                       :value="version.version"
+                     >
+                       <div class="flex items-center gap-2">
+                         <span>{{ version.version }}</span>
+                         <span class="text-xs text-muted-foreground">
+                           ({{ new Date(version.created_at).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" }) }})
+                         </span>
+                       </div>
+                     </SelectItem>
+                   </SelectContent>
+                 </Select>
                  <p v-if="isLoadingReferenceVersions" class="text-xs text-muted-foreground">
                    กำลังโหลด Version เก่า...
+                 </p>
+                 <p v-else-if="isSubmitting" class="text-xs text-muted-foreground flex items-center gap-2">
+                   <Loader2 class="h-3 w-3 animate-spin" />
+                   กำลังโหลดข้อมูล...
                  </p>
                  <p v-else-if="referenceVersions.length === 0" class="text-xs text-muted-foreground">
                    ไม่มี Version เก่า สามารถสร้างใหม่จากศูนย์ได้

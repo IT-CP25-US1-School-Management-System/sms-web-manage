@@ -2387,8 +2387,7 @@ watch(
 
                       <div
                         v-if="
-                          viewTableSelections[String(viewName)]?.columns &&
-                          viewTableSelections[String(viewName)]?.columns
+                          (viewTableSelections[String(viewName)]?.columns ?? [])
                             .length > 0
                         "
                         class="flex flex-wrap items-center gap-2 p-2 border rounded bg-primary/5"

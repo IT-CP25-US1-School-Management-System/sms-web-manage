@@ -1767,6 +1767,12 @@ watch(selectedReferenceVersion, async (newValue) => {
     // Copy policies
     if (refVersion.policies) {
       setFieldValue("policies", refVersion.policies);
+      
+      // ตั้งค่า mainTable จาก reference version
+      const mainTableFromRef = refVersion.policies?.runtime?.query?.from?.table;
+      if (mainTableFromRef) {
+        mainTable.value = mainTableFromRef;
+      }
     }
 
     await nextTick();

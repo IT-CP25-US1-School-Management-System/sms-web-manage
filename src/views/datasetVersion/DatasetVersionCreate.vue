@@ -510,6 +510,22 @@ const loadReferenceVersions = async () => {
 };
 
 // Step 2: Schema functions
+const isColumnAdded = (column: any): boolean => {
+  const currentColumns = formData.value.schema?.columns || [];
+  return currentColumns.some(
+    (c) => c.name === column.column_name && c.table_name === column.table_name,
+  );
+};
+
+const getAddedColumnsCountForTable = (tableName: string): number => {
+  const currentColumns = formData.value.schema?.columns || [];
+  return currentColumns.filter((c) => c.table_name === tableName).length;
+};
+
+const isTableAdded = (tableName: string): boolean => {
+  return getAddedColumnsCountForTable(tableName) > 0;
+};
+
 const addColumnFromList = (column: any) => {
   const currentColumns = formData.value.schema?.columns || [];
   const exists = currentColumns.some(
@@ -1729,6 +1745,15 @@ watch(selectedReferenceVersion, async (newValue) => {
     );
     const refVersion = response.data.data;
 
+    // Copy source_id first
+    if (refVersion.source_id) {
+      setFieldValue("source_id", refVersion.source_id);
+      // Load schemas for the selected source
+      await nextTick();
+      await loadSchemas();
+      await nextTick();
+    }
+
     // Copy schema columns
     if (refVersion.schema?.columns) {
       setFieldValue("schema.columns", refVersion.schema.columns);
@@ -1744,13 +1769,7 @@ watch(selectedReferenceVersion, async (newValue) => {
       setFieldValue("policies", refVersion.policies);
     }
 
-    // Copy source_id if available
-    if (refVersion.source_id) {
-      setFieldValue("source_id", refVersion.source_id);
-      // Load schemas for the selected source
-      await nextTick();
-      loadSchemas();
-    }
+    await nextTick();
 
     showSuccess("โหลดข้อมูล Version เก่าสำเร็จ", {
       description: `โหลดข้อมูลจาก ${newValue} เรียบร้อย`,
@@ -1760,6 +1779,8 @@ watch(selectedReferenceVersion, async (newValue) => {
     showError("ไม่สามารถโหลดข้อมูล Version ได้", {
       description: "กรุณาลองใหม่อีกครั้ง",
     });
+    // Reset selected version on error
+    selectedReferenceVersion.value = null;
   } finally {
     isSubmitting.value = false;
   }
@@ -2063,7 +2084,16 @@ watch(
                           :key="table.table_name"
                           :value="table.table_name"
                         >
-                          {{ table.table_name }}
+                          <div class="flex items-center gap-2">
+                            <span>{{ table.table_name }}</span>
+                            <Badge 
+                              v-if="isTableAdded(table.table_name)"
+                              variant="secondary"
+                              class="text-xs"
+                            >
+                              +{{ getAddedColumnsCountForTable(table.table_name) }}
+                            </Badge>
+                          </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -2087,7 +2117,12 @@ watch(
                       <div
                         v-for="column in columns"
                         :key="column.column_name"
-                        class="flex items-center justify-between p-2 hover:bg-muted rounded cursor-pointer"
+                        :class="[
+                          'flex items-center justify-between p-2 rounded cursor-pointer transition-colors',
+                          isColumnAdded(column)
+                            ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800'
+                            : 'hover:bg-muted'
+                        ]"
                         @click="addColumnFromList(column)"
                       >
                         <div class="flex-1">
@@ -2104,7 +2139,10 @@ watch(
                             >NOT NULL</Badge
                           >
                         </div>
-                        <Plus class="h-4 w-4 text-muted-foreground" />
+                        <div class="flex items-center gap-2">
+                          <Check v-if="isColumnAdded(column)" class="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <Plus v-else class="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2246,7 +2284,7 @@ watch(
                       >
                       <Select
                         :model-value="
-                          viewTableSelections[String(viewName)]!.table_name
+                          viewTableSelections[String(viewName)]?.table_name ?? ''
                         "
                         @update:model-value="
                           (val) => {
@@ -2350,7 +2388,7 @@ watch(
                       <div
                         v-if="
                           viewTableSelections[String(viewName)]?.columns &&
-                          viewTableSelections[String(viewName)]!.columns
+                          viewTableSelections[String(viewName)]?.columns
                             .length > 0
                         "
                         class="flex flex-wrap items-center gap-2 p-2 border rounded bg-primary/5"
@@ -2359,8 +2397,7 @@ watch(
                           >เลือกแล้ว:</span
                         >
                         <Badge
-                          v-for="col in viewTableSelections[String(viewName)]!
-                            .columns"
+                          v-for="col in viewTableSelections[String(viewName)]?.columns ?? []"
                           :key="col"
                           variant="secondary"
                         >

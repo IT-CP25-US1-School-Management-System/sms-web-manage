@@ -197,7 +197,7 @@ const handleLogout = async () => {
               <div
                 class="flex aspect-square h-10 items-center justify-center rounded-lg bg-background"
               >
-                <!-- <img src="/" alt="Logo" class="h-9" /> -->
+                <img src="/sms-logo.png" alt="Logo" class="" />
               </div>
               <div class="grid flex-1 text-left text-sm leading-tight">
                 <span class="truncate font-semibold">{{ env.APP_NAME }}</span>
